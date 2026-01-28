@@ -8,3 +8,4 @@
 .php-cs-fixer.cache
 var/coverage/
 var/phpunit.cache/
+var/rector/

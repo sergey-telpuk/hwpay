@@ -2,15 +2,15 @@ FROM ghcr.io/roadrunner-server/roadrunner:2025.1.6 AS roadrunner
 FROM php:8.5-cli-alpine
 
 RUN apk add --no-cache linux-headers ${PHPIZE_DEPS} icu-dev \
-    && pecl install pcov xdebug \
-    && docker-php-ext-enable pcov xdebug \
+    && pecl install pcov xdebug redis \
+    && docker-php-ext-enable pcov xdebug redis \
     && apk del ${PHPIZE_DEPS}
 
 RUN apk add --no-cache git unzip \
     && curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
 
 RUN apk add --no-cache icu-dev \
-    && docker-php-ext-install -j$(nproc) pdo_mysql pcntl sockets intl
+    && docker-php-ext-install -j$(nproc) pdo_mysql pcntl sockets intl bcmath
 
 COPY --from=roadrunner /usr/bin/rr /usr/local/bin/rr
 

@@ -5,20 +5,28 @@
     "license": "proprietary",
     "require": {
         "php": ">=8.5",
+        "ext-bcmath": "*",
         "baldinof/roadrunner-bundle": "^3.1",
         "doctrine/dbal": "^4.0",
         "doctrine/doctrine-bundle": "^3.2",
+        "doctrine/doctrine-migrations-bundle": "^3.4",
         "doctrine/orm": "^3.4",
+        "moneyphp/money": "4.8.0",
         "symfony/console": "^8.0",
+        "symfony/doctrine-messenger": "*",
         "symfony/dotenv": "^8.0",
         "symfony/framework-bundle": "^8.0",
+        "symfony/messenger": "*",
+        "symfony/monolog-bundle": "^4.0",
         "symfony/runtime": "^8.0",
+        "symfony/validator": "^8.0",
         "symfony/yaml": "^8.0",
         "temporal/sdk": "^2.16"
     },
     "require-dev": {
-        "friendsofphp/php-cs-fixer": "^3.64",
         "phpstan/phpstan": "^2.0",
+        "rector/rector": "^2.0",
+        "squizlabs/php_codesniffer": "^3.10",
         "phpstan/phpstan-symfony": "^2.0",
         "phpunit/phpunit": "^11.0",
         "symfony/browser-kit": "^8.0",
@@ -54,7 +62,11 @@
         ],
         "test": "bin/phpunit",
         "test:unit": "bin/phpunit tests/Unit",
-        "test:integration": "bin/phpunit tests/Integration"
+        "test:integration": "bin/phpunit tests/Integration",
+        "rector": "rector process",
+        "rector:dry": "rector process --dry-run",
+        "phpcs": "phpcs",
+        "phpcbf": "phpcbf"
     },
     "conflict": {
         "symfony/symfony": "*"

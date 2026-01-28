@@ -4,13 +4,17 @@ declare(strict_types=1);
 
 namespace App\Tests\Integration\Http\Controller;
 
+use PHPUnit\Framework\Attributes\Group;
+use PHPUnit\Framework\Attributes\Test;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 
+#[Group('integration')]
 final class HealthControllerTest extends WebTestCase
 {
-    public function testHomeReturnsHelloMessage(): void
+    #[Test]
+    public function homeReturnsHelloMessage(): void
     {
-        $client = static::createClient();
+        $client = self::createClient();
         $client->request('GET', '/');
 
         self::assertResponseIsSuccessful();
@@ -20,9 +24,10 @@ final class HealthControllerTest extends WebTestCase
         self::assertSame('Hello', $data['message']);
     }
 
-    public function testHealthReturnsOk(): void
+    #[Test]
+    public function healthReturnsOk(): void
     {
-        $client = static::createClient();
+        $client = self::createClient();
         $client->request('GET', '/health');
 
         self::assertResponseIsSuccessful();

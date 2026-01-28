@@ -26,9 +26,6 @@
         <ini name="max_execution_time" value="0"/>
     </php>
     <testsuites>
-        <testsuite name="Unit">
-            <directory>tests/Unit</directory>
-        </testsuite>
         <testsuite name="Integration">
             <directory>tests/Integration</directory>
         </testsuite>

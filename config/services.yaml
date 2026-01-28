@@ -1,4 +1,9 @@
 parameters:
+    exchange_rates:
+        USD:
+            EUR: 0.92
+        EUR:
+            USD: 1.09
 
 services:
     _defaults:
@@ -19,8 +24,24 @@ services:
 
     App\Application\:
         resource: '../src/Application/'
-        exclude: '../src/Application/**'
+        exclude: []
 
     App\Infrastructure\:
         resource: '../src/Infrastructure/'
-        exclude: '../src/Infrastructure/**'
+        exclude: '../src/Infrastructure/Temporal/**'
+
+    App\Application\Transfer\AccountRepositoryInterface: '@App\Infrastructure\Persistence\Doctrine\AccountRepository'
+
+    App\Application\Transfer\ExchangeRateProviderInterface:
+        class: App\Infrastructure\ExchangeRate\ConfigurableExchangeRateProvider
+        arguments:
+            $exchangeRates: '%exchange_rates%'
+
+    App\Application\Transfer\TransferFundsHandler:
+        arguments:
+            $exchangeRates: '@App\Application\Transfer\ExchangeRateProviderInterface'
+
+    App\Infrastructure\Http\Controller\TransferController:
+        arguments:
+            $commandBus: '@command_bus'
+            $cache: '@cache.app'

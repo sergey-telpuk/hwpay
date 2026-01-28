@@ -12,9 +12,12 @@ services:
     environment:
       APP_ENV: dev
       DATABASE_URL: mysql://app:app@mysql:3306/app
+      REDIS_URL: redis://redis:6379
       TEMPORAL_ADDRESS: temporal:7233
     depends_on:
       mysql:
+        condition: service_healthy
+      redis:
         condition: service_healthy
       temporal:
         condition: service_started
@@ -36,12 +39,27 @@ services:
       - "3306:3306"
     volumes:
       - mysql_data:/var/lib/mysql
+      - ./docker/mysql/init:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: [ "CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot" ]
       interval: 5s
       timeout: 5s
       retries: 10
       start_period: 10s
+    networks:
+      - hwpay
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: hwpay-redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
     networks:
       - hwpay
     restart: unless-stopped
