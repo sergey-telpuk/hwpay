@@ -1,5 +1,6 @@
 /vendor/
 /var/
+.idea/
 .env
 .env.local
 .env.*.local
