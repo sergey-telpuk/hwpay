@@ -1,5 +1,9 @@
 # HWPay
 
+[![Tests](https://github.com/sergey-telpuk/hwpay/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/sergey-telpuk/hwpay/actions/workflows/tests.yml)
+[![PHP 8.5](https://img.shields.io/badge/PHP-8.5-777BB4?logo=php&logoColor=white)](https://www.php.net/)
+[![codecov](https://codecov.io/gh/sergey-telpuk/hwpay/graph/badge.svg)](https://codecov.io/gh/sergey-telpuk/hwpay)
+
 Symfony 8 + Docker Compose + RoadRunner + DDD + Temporal + MySQL.
 
 ## Stack
