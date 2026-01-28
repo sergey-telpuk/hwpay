@@ -1,0 +1,27 @@
+version: "3"
+
+rpc:
+  listen: tcp://127.0.0.1:6001
+
+server:
+  command: "php public/index.php"
+  env:
+    APP_RUNTIME: Baldinof\RoadRunnerBundle\Runtime\Runtime
+
+http:
+  address: 0.0.0.0:8080
+  pool:
+    num_workers: 4
+    max_jobs: 0
+    allocate_timeout: 180s
+    destroy_timeout: 120s
+  middleware: ["gzip"]
+  uploads:
+    dir: "/tmp/uploads"
+    forbid: [".php", ".exe", ".bat"]
+
+logs:
+  mode: production
+  level: info
+  output: stdout
+  err_output: stderr

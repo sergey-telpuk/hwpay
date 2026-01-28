@@ -1,0 +1,6 @@
+# Test environment: expose private services here if needed for integration tests.
+# Example: App\Some\PrivateService: { public: true }
+
+parameters:
+
+services: {}

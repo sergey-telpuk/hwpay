@@ -1,0 +1,4 @@
+#!/usr/bin/env sh
+set -e
+cd "$(dirname "$0")/.."
+APP_ENV=test exec php vendor/bin/phpunit "$@"

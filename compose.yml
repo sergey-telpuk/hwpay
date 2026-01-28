@@ -1,0 +1,108 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        BUILD_DEV: "1"
+    image: hwpay-app:latest
+    container_name: hwpay-app
+    ports:
+      - "8080:8080"
+    environment:
+      APP_ENV: dev
+      DATABASE_URL: mysql://app:app@mysql:3306/app
+      TEMPORAL_ADDRESS: temporal:7233
+    depends_on:
+      mysql:
+        condition: service_healthy
+      temporal:
+        condition: service_started
+    volumes:
+      - .:/app
+    networks:
+      - hwpay
+    restart: unless-stopped
+
+  mysql:
+    image: mysql:8.4
+    container_name: hwpay-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: app
+      MYSQL_USER: app
+      MYSQL_PASSWORD: app
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot" ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    networks:
+      - hwpay
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:17-alpine
+    container_name: hwpay-postgres
+    environment:
+      POSTGRES_USER: temporal
+      POSTGRES_PASSWORD: temporal
+      POSTGRES_DB: temporal
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U temporal" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - hwpay
+    restart: unless-stopped
+
+  temporal:
+    image: temporalio/auto-setup:1.24
+    container_name: hwpay-temporal
+    environment:
+      DB: postgres12
+      DB_PORT: 5432
+      POSTGRES_USER: temporal
+      POSTGRES_PWD: temporal
+      POSTGRES_SEEDS: postgres
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "7233:7233"
+    networks:
+      - hwpay
+    restart: unless-stopped
+
+  temporal-ui:
+    image: temporalio/ui:2.43.3
+    container_name: hwpay-temporal-ui
+    environment:
+      TEMPORAL_ADDRESS: temporal:7233
+      TEMPORAL_CORS_ORIGINS: http://localhost:8080
+    depends_on:
+      - temporal
+    ports:
+      - "8088:8080"
+    networks:
+      - hwpay
+    restart: unless-stopped
+
+volumes:
+  mysql_data:
+  postgres_data:
+
+
+networks:
+  hwpay:
+    driver: bridge

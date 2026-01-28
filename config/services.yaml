@@ -1,0 +1,26 @@
+parameters:
+
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: true
+
+    App\:
+        resource: '../src/'
+        exclude:
+            - '../src/Kernel.php'
+            - '../src/Domain/**'
+            - '../src/Application/**'
+            - '../src/Infrastructure/Temporal/**'
+
+    App\Domain\:
+        resource: '../src/Domain/'
+        exclude: '../src/Domain/**'
+
+    App\Application\:
+        resource: '../src/Application/'
+        exclude: '../src/Application/**'
+
+    App\Infrastructure\:
+        resource: '../src/Infrastructure/'
+        exclude: '../src/Infrastructure/**'

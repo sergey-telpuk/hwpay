@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
+         bootstrap="tests/bootstrap.php"
+         colors="true"
+         cacheDirectory="var/phpunit.cache"
+         executionOrder="depends,defects"
+         processIsolation="false"
+         resolveDependencies="true"
+         stopOnFailure="false"
+         stopOnError="false"
+         stopOnIncomplete="false"
+         stopOnSkipped="false"
+         failOnRisky="true"
+         failOnWarning="false"
+         beStrictAboutTestsThatDoNotTestAnything="true"
+         beStrictAboutOutputDuringTests="false">
+    <php>
+        <env name="APP_ENV" value="test" force="true"/>
+        <env name="APP_DEBUG" value="0" force="true"/>
+        <server name="KERNEL_CLASS" value="App\Kernel"/>
+        <ini name="error_reporting" value="E_ALL &amp; ~E_DEPRECATED &amp; ~E_STRICT"/>
+        <ini name="display_errors" value="1"/>
+        <ini name="display_startup_errors" value="1"/>
+        <ini name="memory_limit" value="-1"/>
+        <ini name="max_execution_time" value="0"/>
+    </php>
+    <testsuites>
+        <testsuite name="Unit">
+            <directory>tests/Unit</directory>
+        </testsuite>
+        <testsuite name="Integration">
+            <directory>tests/Integration</directory>
+        </testsuite>
+    </testsuites>
+    <source>
+        <include>
+            <directory>src</directory>
+        </include>
+        <exclude>
+            <directory>src/Kernel.php</directory>
+        </exclude>
+    </source>
+    <coverage>
+        <report>
+            <html outputDirectory="var/coverage"/>
+        </report>
+    </coverage>
+</phpunit>
