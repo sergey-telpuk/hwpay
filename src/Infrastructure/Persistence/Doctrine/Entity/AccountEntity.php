@@ -4,37 +4,47 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Persistence\Doctrine\Entity;
 
-use App\Domain\Account\Currency;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Uid\Uuid;
 
 #[ORM\Entity]
-#[ORM\Table(name: 'account')]
+#[ORM\Table(name: 'accounts')]
+#[ORM\Index(name: 'accounts_owner_idx', columns: ['owner_type', 'owner_id'])]
+#[ORM\Index(name: 'accounts_currency_idx', columns: ['currency'])]
 final class AccountEntity
 {
-    #[ORM\Column(name: 'balance_minor', type: 'bigint')]
-    private string $balanceMinor;
-
-    public function __construct(#[ORM\Id]
-        #[ORM\Column(type: 'string', length: 36)]
-        private string $id, int $balanceMinor, #[ORM\Column(type: 'string', length: 3)]
-        private string $currency = Currency::DEFAULT_CODE)
-    {
-        $this->balanceMinor = (string) $balanceMinor;
+    public function __construct(
+        #[ORM\Id]
+        #[ORM\Column(type: 'uuid_string', unique: true)]
+        private Uuid $id,
+        #[ORM\Column(name: 'owner_type', type: 'string', length: 20)]
+        private string $ownerType,
+        #[ORM\Column(name: 'owner_id', type: 'string', length: 36)]
+        private string $ownerId,
+        #[ORM\Column(type: 'string', length: 3)]
+        private string $currency,
+        #[ORM\Column(type: 'string', length: 20)]
+        private string $type,
+        #[ORM\Column(type: 'string', length: 20)]
+        private string $status,
+        #[ORM\Column(name: 'created_at', type: 'datetime_immutable')]
+        private \DateTimeImmutable $createdAt,
+    ) {
     }
 
-    public function getId(): string
+    public function getId(): Uuid
     {
         return $this->id;
     }
 
-    public function getBalanceMinor(): int
+    public function getOwnerType(): string
     {
-        return (int) $this->balanceMinor;
+        return $this->ownerType;
     }
 
-    public function setBalanceMinor(int $balanceMinor): void
+    public function getOwnerId(): string
     {
-        $this->balanceMinor = (string) $balanceMinor;
+        return $this->ownerId;
     }
 
     public function getCurrency(): string
@@ -42,8 +52,18 @@ final class AccountEntity
         return $this->currency;
     }
 
-    public function setCurrency(string $currency): void
+    public function getType(): string
     {
-        $this->currency = $currency;
+        return $this->type;
+    }
+
+    public function getStatus(): string
+    {
+        return $this->status;
+    }
+
+    public function getCreatedAt(): \DateTimeImmutable
+    {
+        return $this->createdAt;
     }
 }

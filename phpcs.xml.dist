@@ -4,10 +4,10 @@
 
     <file>src</file>
     <file>tests</file>
-    <file>migrations</file>
 
     <exclude-pattern>*/vendor/*</exclude-pattern>
     <exclude-pattern>*/var/*</exclude-pattern>
+    <exclude-pattern>*/migrations/*.php</exclude-pattern>
 
     <rule ref="PSR12">
         <!-- Concatenation: no spaces around "." -->

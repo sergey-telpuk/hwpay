@@ -1,0 +1,6 @@
+# yceruto/money-bundle: https://github.com/yceruto/money-bundle
+# Doctrine integration (Embedded Money): https://github.com/yceruto/money-bundle#doctrine
+money:
+    doctrine:
+        enabled: true
+    # Optional: form, twig, currencies - see bundle README

@@ -25,9 +25,6 @@ final class InsufficientBalanceException extends \DomainException
 
     private static function formatMoney(Money $money): string
     {
-        $minor = (int) $money->getAmount();
-        $major = number_format($minor / 100, 2, '.', '');
-
-        return $major.' '.$money->getCurrency()->getCode();
+        return $money->getAmount() . ' ' . $money->getCurrency()->getCode();
     }
 }

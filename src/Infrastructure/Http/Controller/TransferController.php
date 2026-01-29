@@ -9,7 +9,6 @@ use App\Application\Transfer\TransferFundsResult;
 use App\Domain\Account\AccountId;
 use App\Domain\Account\AccountNotFoundException;
 use App\Domain\Account\InsufficientBalanceException;
-use Symfony\Component\Cache\Adapter\AdapterInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -26,13 +25,9 @@ final class TransferController
 {
     use HandleTrait;
 
-    private const int IDEMPOTENCY_TTL = 86400;
-    private const string CACHE_KEY_PREFIX = 'transfer_idempotency_';
-
     public function __construct(
         MessageBusInterface $commandBus,
-        private ValidatorInterface $validator,
-        private AdapterInterface $cache,
+        private readonly ValidatorInterface $validator,
     ) {
         $this->messageBus = $commandBus;
     }
@@ -50,20 +45,20 @@ final class TransferController
             return new JsonResponse(['errors' => $errors], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
-        $idempotencyKey = $payload['idempotency_key'] ?? '';
-        $cacheKey = self::CACHE_KEY_PREFIX.hash('sha256', $idempotencyKey);
-        $cacheItem = $this->cache->getItem($cacheKey);
-        if ($cacheItem->isHit()) {
-            $cached = $cacheItem->get();
+        $idempotencyKey = isset($payload['idempotency_key']) && is_string($payload['idempotency_key'])
+            ? $payload['idempotency_key'] : '';
 
-            return new JsonResponse($cached['body'], $cached['status']);
+        $fromId = $payload['from_account_id'] ?? '';
+        $toId = $payload['to_account_id'] ?? '';
+        $amountMinor = $payload['amount_minor'] ?? 0;
+        if (!is_string($fromId) || !is_string($toId) || !is_numeric($amountMinor)) {
+            return new JsonResponse(['error' => 'Invalid payload'], Response::HTTP_BAD_REQUEST);
         }
-
         try {
             $command = new TransferFundsCommand(
-                fromAccountId: new AccountId($payload['from_account_id']),
-                toAccountId: new AccountId($payload['to_account_id']),
-                amountMinor: (int) $payload['amount_minor'],
+                fromAccountId: new AccountId($fromId),
+                toAccountId: new AccountId($toId),
+                amountMinor: (int) $amountMinor,
                 idempotencyKey: $idempotencyKey,
             );
             /** @var TransferFundsResult $result */
@@ -75,6 +70,9 @@ final class TransferController
             }
             if ($previous instanceof InsufficientBalanceException) {
                 return new JsonResponse(['error' => $previous->getMessage()], Response::HTTP_UNPROCESSABLE_ENTITY);
+            }
+            if ($previous instanceof \InvalidArgumentException) {
+                return new JsonResponse(['error' => $previous->getMessage()], Response::HTTP_BAD_REQUEST);
             }
             throw $e;
         } catch (AccountNotFoundException $e) {
@@ -89,16 +87,13 @@ final class TransferController
             'transfer_id' => $result->transferId,
             'from_account_id' => $result->fromAccountId,
             'to_account_id' => $result->toAccountId,
-            'amount_minor' => $result->amountMinor,
+            'amount_minor' => (int) $result->amount->getAmount(),
         ];
-        $response = new JsonResponse($body, Response::HTTP_OK);
-        $cacheItem->set(['body' => $body, 'status' => Response::HTTP_OK]);
-        $cacheItem->expiresAfter(self::IDEMPOTENCY_TTL);
-        $this->cache->save($cacheItem);
 
-        return $response;
+        return new JsonResponse($body, Response::HTTP_OK);
     }
 
+    /** @return array<string, mixed>|null */
     private function parseBody(Request $request): ?array
     {
         $content = $request->getContent();
@@ -107,9 +102,12 @@ final class TransferController
         }
         $data = json_decode($content, true);
 
-        return is_array($data) ? $data : null;
+        return is_array($data) ? /** @var array<string, mixed> */ $data : null;
     }
 
+    /** @param array<string, mixed> $payload
+     * @return array<string, string>
+     */
     private function validatePayload(array $payload): array
     {
         $constraints = new Assert\Collection([
@@ -125,7 +123,7 @@ final class TransferController
         $violations = $this->validator->validate($payload, $constraints);
         $errors = [];
         foreach ($violations as $v) {
-            $errors[$v->getPropertyPath()] = $v->getMessage();
+            $errors[$v->getPropertyPath()] = (string) $v->getMessage();
         }
 
         return $errors;

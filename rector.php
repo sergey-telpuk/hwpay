@@ -16,6 +16,7 @@ return RectorConfig::configure()
     ->withPreparedSets(
         deadCode: true,
         codeQuality: true,
+        phpunitCodeQuality: true,
     )
     ->withSkip([
         __DIR__ . '/vendor',

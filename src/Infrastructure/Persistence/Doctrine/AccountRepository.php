@@ -13,37 +13,25 @@ use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
 use Money\Currency;
 use Money\Money;
+use Symfony\Component\Uid\Uuid;
 
 final readonly class AccountRepository implements AccountRepositoryInterface
 {
     public function __construct(
         private EntityManagerInterface $em,
+        private LedgerRepository $ledger,
+        private HoldRepository $holds,
     ) {
     }
 
     public function get(AccountId $id): Account
     {
-        $entity = $this->em->find(AccountEntity::class, $id->toString());
+        $entity = $this->em->find(AccountEntity::class, Uuid::fromString($id->toString()));
         if (null === $entity) {
             throw AccountNotFoundException::withId($id);
         }
 
-        return $this->toDomain($entity);
-    }
-
-    public function save(Account $account): void
-    {
-        $balanceMinor = (int) $account->balance()->getAmount();
-        $currencyCode = $account->balance()->getCurrency()->getCode();
-        $entity = $this->em->find(AccountEntity::class, $account->id()->toString());
-        if (null !== $entity) {
-            $entity->setBalanceMinor($balanceMinor);
-            $entity->setCurrency($currencyCode);
-        } else {
-            $entity = new AccountEntity($account->id()->toString(), $balanceMinor, $currencyCode);
-            $this->em->persist($entity);
-        }
-        $this->em->flush();
+        return $this->toAccount($entity);
     }
 
     public function lockForUpdate(AccountId $id): Account
@@ -52,24 +40,31 @@ final readonly class AccountRepository implements AccountRepositoryInterface
         $qb->select('a')
             ->from(AccountEntity::class, 'a')
             ->where('a.id = :id')
-            ->setParameter('id', $id->toString());
+            ->setParameter('id', Uuid::fromString($id->toString()));
         $query = $qb->getQuery();
         $query->setLockMode(LockMode::PESSIMISTIC_WRITE);
         $entity = $query->getOneOrNullResult();
-        if (null === $entity) {
+        if (!$entity instanceof AccountEntity) {
             throw AccountNotFoundException::withId($id);
         }
 
-        return $this->toDomain($entity);
+        return $this->toAccount($entity);
     }
 
-    private function toDomain(AccountEntity $entity): Account
+    private function toAccount(AccountEntity $entity): Account
     {
-        $balance = new Money((string) $entity->getBalanceMinor(), new Currency($entity->getCurrency()));
+        $currency = $entity->getCurrency() !== '' ? $entity->getCurrency() : 'USD';
+        $accountIdString = $entity->getId()->toString();
+        $balance = $this->ledger->getBalanceForAccount($accountIdString, $currency);
+        $holds = $this->holds->getActiveHoldsSum($accountIdString, $currency);
+        $available = $balance->subtract($holds);
+        if ($available->isNegative()) {
+            $available = new Money('0', $balance->getCurrency());
+        }
 
         return new Account(
-            new AccountId($entity->getId()),
-            $balance,
+            new AccountId($accountIdString),
+            $available,
         );
     }
 }

@@ -13,8 +13,8 @@
          stopOnSkipped="false"
          failOnRisky="true"
          failOnWarning="false"
-         beStrictAboutTestsThatDoNotTestAnything="true"
-         beStrictAboutOutputDuringTests="false">
+        beStrictAboutTestsThatDoNotTestAnything="true"
+        beStrictAboutOutputDuringTests="false">
     <php>
         <env name="APP_ENV" value="test" force="true"/>
         <env name="APP_DEBUG" value="0" force="true"/>

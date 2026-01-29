@@ -10,6 +10,9 @@ services:
         autowire: true
         autoconfigure: true
 
+    Money\Currencies\ISOCurrencies: ~
+    Money\Currencies: '@Money\Currencies\ISOCurrencies'
+
     App\:
         resource: '../src/'
         exclude:
@@ -31,11 +34,15 @@ services:
         exclude: '../src/Infrastructure/Temporal/**'
 
     App\Application\Transfer\AccountRepositoryInterface: '@App\Infrastructure\Persistence\Doctrine\AccountRepository'
+    App\Application\Transfer\LedgerRepositoryInterface: '@App\Infrastructure\Persistence\Doctrine\LedgerRepository'
+    App\Application\Transfer\TransactionRepositoryInterface: '@App\Infrastructure\Persistence\Doctrine\TransactionRepository'
+    App\Application\Transfer\IdempotencyStoreInterface: '@App\Infrastructure\Idempotency\RedisIdempotencyStore'
 
     App\Application\Transfer\ExchangeRateProviderInterface:
         class: App\Infrastructure\ExchangeRate\ConfigurableExchangeRateProvider
         arguments:
             $exchangeRates: '%exchange_rates%'
+            $currencies: '@Money\Currencies'
 
     App\Application\Transfer\TransferFundsHandler:
         arguments:
@@ -44,4 +51,7 @@ services:
     App\Infrastructure\Http\Controller\TransferController:
         arguments:
             $commandBus: '@command_bus'
+
+    App\Infrastructure\Idempotency\RedisIdempotencyStore:
+        arguments:
             $cache: '@cache.app'

@@ -1,0 +1,6 @@
+# Test env: use DATABASE_URL as-is (no dbname_suffix).
+# Local: .env.test → mysql://...@127.0.0.1:3306/app_test
+# Docker: compose env → mysql://...@mysql:3306/app
+doctrine:
+    dbal:
+        url: '%env(resolve:DATABASE_URL)%'

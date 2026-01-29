@@ -2,6 +2,9 @@ doctrine:
     dbal:
         url: '%env(resolve:DATABASE_URL)%'
         profiling_collect_backtrace: '%kernel.debug%'
+        types:
+            money: App\Infrastructure\Persistence\Doctrine\Type\MoneyType
+            uuid_string: App\Infrastructure\Persistence\Doctrine\Type\UuidStringType
     orm:
         validate_xml_mapping: true
         naming_strategy: doctrine.orm.naming_strategy.underscore_number_aware
@@ -12,11 +15,6 @@ doctrine:
                 dir: '%kernel.project_dir%/src/Infrastructure/Persistence/Doctrine/Entity'
                 prefix: 'App\Infrastructure\Persistence\Doctrine\Entity'
                 is_bundle: false
-
-when@test:
-    doctrine:
-        dbal:
-            dbname_suffix: '_test%env(default::TEST_TOKEN)%'
 
 when@prod:
     doctrine:
