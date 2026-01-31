@@ -48,7 +48,7 @@ final class TransferControllerTest extends TransactionalWebTestCase
     private function getEntityManager(KernelBrowser $client): EntityManagerInterface
     {
         $em = $client->getContainer()->get(EntityManagerInterface::class);
-        assert($em instanceof EntityManagerInterface);
+        $this->assertInstanceOf(EntityManagerInterface::class, $em);
 
         return $em;
     }
@@ -57,7 +57,7 @@ final class TransferControllerTest extends TransactionalWebTestCase
     private function encodeJson(array $data): string
     {
         $encoded = json_encode($data);
-        self::assertNotFalse($encoded);
+        $this->assertNotFalse($encoded);
 
         return $encoded;
     }
@@ -65,11 +65,16 @@ final class TransferControllerTest extends TransactionalWebTestCase
     /** @return array<string, mixed> */
     private function decodeJson(string|false $content): array
     {
-        self::assertNotFalse($content);
+        $this->assertNotFalse($content);
         $data = json_decode($content, true);
-        self::assertIsArray($data);
+        $this->assertIsArray($data);
+        $out = [];
+        foreach ($data as $k => $v) {
+            $this->assertIsString($k);
+            $out[$k] = $v;
+        }
 
-        return $data;
+        return $out;
     }
 
     private function account(string $id, string $currency = 'USD'): AccountEntity
@@ -145,8 +150,8 @@ final class TransferControllerTest extends TransactionalWebTestCase
         );
         self::assertResponseStatusCodeSame(Response::HTTP_BAD_REQUEST);
         $data = $this->decodeJson($client->getResponse()->getContent());
-        self::assertArrayHasKey('error', $data);
-        self::assertSame('Invalid JSON', $data['error']);
+        $this->assertArrayHasKey('error', $data);
+        $this->assertSame('Invalid JSON', $data['error']);
     }
 
     /** Невалидный JSON → 400 */
@@ -164,8 +169,8 @@ final class TransferControllerTest extends TransactionalWebTestCase
         );
         self::assertResponseStatusCodeSame(Response::HTTP_BAD_REQUEST);
         $data = $this->decodeJson($client->getResponse()->getContent());
-        self::assertArrayHasKey('error', $data);
-        self::assertSame('Invalid JSON', $data['error']);
+        $this->assertArrayHasKey('error', $data);
+        $this->assertSame('Invalid JSON', $data['error']);
     }
 
     /** from_account_id === to_account_id → 400 */
@@ -194,7 +199,7 @@ final class TransferControllerTest extends TransactionalWebTestCase
         );
         self::assertResponseStatusCodeSame(Response::HTTP_BAD_REQUEST);
         $data = $this->decodeJson($client->getResponse()->getContent());
-        self::assertArrayHasKey('error', $data);
+        $this->assertArrayHasKey('error', $data);
     }
 
     /** Счёт получателя не найден → 404 */
@@ -221,7 +226,7 @@ final class TransferControllerTest extends TransactionalWebTestCase
         );
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
         $data = $this->decodeJson($client->getResponse()->getContent());
-        self::assertArrayHasKey('error', $data);
+        $this->assertArrayHasKey('error', $data);
     }
 
     /** Счёт отправителя не найден → 404 */
@@ -248,7 +253,7 @@ final class TransferControllerTest extends TransactionalWebTestCase
         );
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
         $data = $this->decodeJson($client->getResponse()->getContent());
-        self::assertArrayHasKey('error', $data);
+        $this->assertArrayHasKey('error', $data);
     }
 
     /** 1) Не хватает денег → 422 */
@@ -276,7 +281,7 @@ final class TransferControllerTest extends TransactionalWebTestCase
         );
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
         $data = $this->decodeJson($client->getResponse()->getContent());
-        self::assertArrayHasKey('error', $data);
+        $this->assertArrayHasKey('error', $data);
     }
 
     /** 2) Хватает денег → успех */
@@ -307,19 +312,24 @@ final class TransferControllerTest extends TransactionalWebTestCase
         self::assertResponseIsSuccessful();
         self::assertResponseHeaderSame('content-type', 'application/json');
         $data = $this->decodeJson($client->getResponse()->getContent());
-        self::assertArrayHasKey('transfer_id', $data);
-        self::assertNotEmpty($data['transfer_id']);
-        self::assertSame(self::ACC_FROM, $data['from_account_id']);
-        self::assertSame(self::ACC_TO, $data['to_account_id']);
-        self::assertSame(3_000, $data['amount_minor']);
+        $this->assertArrayHasKey('transfer_id', $data);
+        $this->assertNotEmpty($data['transfer_id']);
+        $this->assertSame(self::ACC_FROM, $data['from_account_id']);
+        $this->assertSame(self::ACC_TO, $data['to_account_id']);
+        $this->assertSame(3_000, $data['amount_minor']);
 
         $em = $this->getEntityManager($client);
         $em->clear();
-        $txId = Uuid::fromString($data['transfer_id']);
+        $transferId = $data['transfer_id'];
+        $this->assertIsString($transferId);
+        $txId = Uuid::fromString($transferId);
         $ledgerEntries = $em->getRepository(LedgerEntryEntity::class)->findBy(['transactionId' => $txId]);
-        self::assertCount(2, $ledgerEntries, 'Same-currency transfer must create 2 ledger entries');
-        $holds = $em->getRepository(HoldEntity::class)->findBy(['accountId' => Uuid::fromString(self::ACC_FROM), 'status' => HoldStatus::Captured]);
-        self::assertCount(1, $holds, 'Transfer must create one hold with status Captured');
+        $this->assertCount(2, $ledgerEntries, 'Same-currency transfer must create 2 ledger entries');
+        $holds = $em->getRepository(HoldEntity::class)->findBy([
+            'accountId' => Uuid::fromString(self::ACC_FROM),
+            'status' => HoldStatus::Captured,
+        ]);
+        $this->assertCount(1, $holds, 'Transfer must create one hold with status Captured');
     }
 
     #[Test]
@@ -358,7 +368,7 @@ final class TransferControllerTest extends TransactionalWebTestCase
             $this->encodeJson($payload),
         );
         self::assertResponseIsSuccessful();
-        self::assertSame($first, $client->getResponse()->getContent());
+        $this->assertSame($first, $client->getResponse()->getContent());
     }
 
     /** 3) Кросс-валюта: разная валюта (USD→EUR) → успех с конвертацией */
@@ -388,28 +398,37 @@ final class TransferControllerTest extends TransactionalWebTestCase
         );
         self::assertResponseIsSuccessful();
         $data = $this->decodeJson($client->getResponse()->getContent());
-        self::assertArrayHasKey('transfer_id', $data);
-        self::assertNotEmpty($data['transfer_id']);
-        self::assertSame(self::ACC_USD, $data['from_account_id']);
-        self::assertSame(self::ACC_EUR, $data['to_account_id']);
-        self::assertSame(10_000, $data['amount_minor']);
+        $this->assertArrayHasKey('transfer_id', $data);
+        $this->assertNotEmpty($data['transfer_id']);
+        $this->assertSame(self::ACC_USD, $data['from_account_id']);
+        $this->assertSame(self::ACC_EUR, $data['to_account_id']);
+        $this->assertSame(10_000, $data['amount_minor']);
 
         // Проверяем конвертацию: 10000 USD × 0.92 = 9200 EUR на счёте получателя
         $accounts = $client->getContainer()->get(AccountRepositoryInterface::class);
-        assert($accounts instanceof AccountRepositoryInterface);
+        $this->assertInstanceOf(AccountRepositoryInterface::class, $accounts);
         $toAccount = $accounts->get(new AccountId(self::ACC_EUR));
-        self::assertSame('9200', $toAccount->balance()->getAmount());
-        self::assertSame('EUR', $toAccount->balance()->getCurrency()->getCode());
+        $this->assertSame('9200', $toAccount->balance()->getAmount());
+        $this->assertSame('EUR', $toAccount->balance()->getCurrency()->getCode());
 
         $em = $this->getEntityManager($client);
         $em->clear();
-        $txId = Uuid::fromString($data['transfer_id']);
+        $transferId = $data['transfer_id'];
+        $this->assertIsString($transferId);
+        $txId = Uuid::fromString($transferId);
         $ledgerEntries = $em->getRepository(LedgerEntryEntity::class)->findBy(['transactionId' => $txId]);
-        self::assertCount(4, $ledgerEntries, 'FX transfer must create 4 ledger entries');
+        $this->assertCount(4, $ledgerEntries, 'FX transfer must create 4 ledger entries');
         $fxTx = $em->getRepository(FxTransactionEntity::class)->findOneBy(['transactionId' => $txId]);
-        self::assertNotNull($fxTx, 'FX transfer must create one fx_transactions row');
-        $holds = $em->getRepository(HoldEntity::class)->findBy(['accountId' => Uuid::fromString(self::ACC_USD), 'status' => HoldStatus::Captured]);
-        self::assertCount(1, $holds, 'FX transfer must create one hold with status Captured');
+        $this->assertInstanceOf(
+            FxTransactionEntity::class,
+            $fxTx,
+            'FX transfer must create one fx_transactions row',
+        );
+        $holds = $em->getRepository(HoldEntity::class)->findBy([
+            'accountId' => Uuid::fromString(self::ACC_USD),
+            'status' => HoldStatus::Captured,
+        ]);
+        $this->assertCount(1, $holds, 'FX transfer must create one hold with status Captured');
     }
 
     /** 4) Кросс-валюта: курс недоступен (GBP→JPY) → 400 */
@@ -439,7 +458,7 @@ final class TransferControllerTest extends TransactionalWebTestCase
         );
         self::assertResponseStatusCodeSame(Response::HTTP_BAD_REQUEST);
         $data = $this->decodeJson($client->getResponse()->getContent());
-        self::assertArrayHasKey('error', $data);
+        $this->assertArrayHasKey('error', $data);
     }
 
     /** 5) Кросс-валюта: одна валюта (USD→USD) → успех */
@@ -469,10 +488,10 @@ final class TransferControllerTest extends TransactionalWebTestCase
         );
         self::assertResponseIsSuccessful();
         $data = $this->decodeJson($client->getResponse()->getContent());
-        self::assertArrayHasKey('transfer_id', $data);
-        self::assertSame(self::ACC_USD, $data['from_account_id']);
-        self::assertSame(self::ACC_EUR, $data['to_account_id']);
-        self::assertSame(2_000, $data['amount_minor']);
+        $this->assertArrayHasKey('transfer_id', $data);
+        $this->assertSame(self::ACC_USD, $data['from_account_id']);
+        $this->assertSame(self::ACC_EUR, $data['to_account_id']);
+        $this->assertSame(2_000, $data['amount_minor']);
     }
 
     #[Test]
@@ -494,6 +513,6 @@ final class TransferControllerTest extends TransactionalWebTestCase
         );
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
         $data = $this->decodeJson($client->getResponse()->getContent());
-        self::assertArrayHasKey('errors', $data);
+        $this->assertArrayHasKey('errors', $data);
     }
 }

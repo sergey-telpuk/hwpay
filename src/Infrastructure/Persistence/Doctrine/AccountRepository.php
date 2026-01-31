@@ -60,7 +60,8 @@ final readonly class AccountRepository implements AccountRepositoryInterface
 
     private function toAccount(AccountEntity $entity): Account
     {
-        $currency = $entity->getCurrency() !== '' ? $entity->getCurrency() : 'USD';
+        $rawCurrency = $entity->getCurrency();
+        $currency = $rawCurrency !== '' ? $rawCurrency : 'USD';
         $accountIdString = $entity->getId()->toString();
         $balance = $this->ledger->getBalanceForAccount($accountIdString, $currency);
         $holds = $this->holds->getActiveHoldsSum($accountIdString, $currency);

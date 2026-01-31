@@ -31,12 +31,13 @@ final readonly class RedisIdempotencyStore implements IdempotencyStoreInterface
         if ($item->isHit()) {
             $cached = $item->get();
             if (is_array($cached)) {
+                /** @var array{transfer_id?: string, from_account_id?: string, to_account_id?: string, amount_minor?: int, currency?: string} $cached */
                 return $this->deserialize($cached);
             }
         }
 
         $fromDb = $this->transactions->findOneByExternalId($idempotencyKey);
-        if ($fromDb !== null) {
+        if ($fromDb instanceof \App\Application\Transfer\TransferFundsResult) {
             $this->set($idempotencyKey, $fromDb);
         }
 
@@ -59,13 +60,22 @@ final readonly class RedisIdempotencyStore implements IdempotencyStoreInterface
     }
 
     /**
-     * @param array{transfer_id?: string, from_account_id?: string, to_account_id?: string, amount_minor?: int, currency?: string} $cached
+     * @param array{
+     *     transfer_id?: string,
+     *     from_account_id?: string,
+     *     to_account_id?: string,
+     *     amount_minor?: int,
+     *     currency?: string
+     * } $cached
      */
     private function deserialize(array $cached): TransferFundsResult
     {
+        /** @var mixed */
+        $rawCurrency = $cached['currency'] ?? 'USD';
+        $currencyCode = is_string($rawCurrency) && $rawCurrency !== '' ? $rawCurrency : 'USD';
         $amount = new Money(
             (string) ($cached['amount_minor'] ?? 0),
-            new Currency($cached['currency'] ?? 'USD'),
+            new Currency($currencyCode),
         );
 
         return new TransferFundsResult(

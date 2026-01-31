@@ -27,15 +27,22 @@ final readonly class ConfigurableExchangeRateProvider implements ExchangeRatePro
         $this->converter = new Converter($currencies, new FixedExchange($list));
     }
 
-    /** @param array<string, array<string, float|string>> $rates
-     * @return array<string, array<string, string>>
+    /** @param array<mixed, array<mixed, float|string>> $rates
+     * @return array<non-empty-string, array<non-empty-string, numeric-string>>
      */
     private function buildFixedList(array $rates): array
     {
         $list = [];
         foreach ($rates as $base => $quotes) {
+            if ($base === '' || !is_string($base)) {
+                continue;
+            }
             foreach ($quotes as $counter => $rate) {
-                $list[$base][$counter] = is_string($rate) ? $rate : (string) $rate;
+                if ($counter === '' || !is_string($counter)) {
+                    continue;
+                }
+                $rateStr = is_string($rate) ? $rate : (string) $rate;
+                $list[$base][$counter] = is_numeric($rateStr) ? $rateStr : '0';
             }
         }
 

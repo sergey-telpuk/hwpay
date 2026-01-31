@@ -31,7 +31,7 @@ abstract class TransactionalWebTestCase extends WebTestCase
         $client = parent::createClient($options, $server);
         if (!self::$migrationsRun) {
             $kernel = static::$kernel;
-            assert($kernel instanceof KernelInterface);
+            \PHPUnit\Framework\Assert::assertInstanceOf(KernelInterface::class, $kernel);
             $application = new Application($kernel);
             $application->setAutoExit(false);
             $output = new BufferedOutput();
@@ -49,7 +49,7 @@ abstract class TransactionalWebTestCase extends WebTestCase
         }
         if (!self::$em instanceof EntityManagerInterface) {
             $em = $client->getContainer()->get(EntityManagerInterface::class);
-            assert($em instanceof EntityManagerInterface);
+            \PHPUnit\Framework\Assert::assertInstanceOf(EntityManagerInterface::class, $em);
             self::$em = $em;
             self::$em->beginTransaction();
         }

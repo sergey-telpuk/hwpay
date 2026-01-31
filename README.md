@@ -1,6 +1,9 @@
 # HWPay — Fund Transfer API
 
 [![Tests](https://github.com/sergey-telpuk/hwpay/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/sergey-telpuk/hwpay/actions/workflows/tests.yml)
+[![PHPStan](https://img.shields.io/github/actions/workflow/status/sergey-telpuk/hwpay/tests.yml?branch=main&label=PHPStan)](https://github.com/sergey-telpuk/hwpay/actions/workflows/tests.yml)
+[![PHPCS](https://img.shields.io/github/actions/workflow/status/sergey-telpuk/hwpay/tests.yml?branch=main&label=PHPCS)](https://github.com/sergey-telpuk/hwpay/actions/workflows/tests.yml)
+[![Rector](https://img.shields.io/github/actions/workflow/status/sergey-telpuk/hwpay/tests.yml?branch=main&label=Rector)](https://github.com/sergey-telpuk/hwpay/actions/workflows/tests.yml)
 [![PHP 8.5](https://img.shields.io/badge/PHP-8.5-777BB4?logo=php&logoColor=white)](https://www.php.net/)
 
 A secure API for transferring funds between accounts. PHP 8.5, Symfony 8, MySQL, Redis, Docker Compose.
@@ -15,24 +18,22 @@ A secure API for transferring funds between accounts. PHP 8.5, Symfony 8, MySQL,
 
 ## How to install and run
 
-**Prerequisites:** Docker and Docker Compose.
+**Prerequisites:** Docker and Docker Compose. All commands run via Docker Compose.
 
 ```bash
 git clone https://github.com/sergey-telpuk/hwpay.git
 cd hwpay
 docker compose up -d
-docker compose run --rm app php bin/console doctrine:migrations:migrate --no-interaction
+make migrate
 ```
+
+Or without Make: `docker compose run --rm app php bin/console doctrine:migrations:migrate --no-interaction`.
 
 - **API:** http://localhost:8080  
 - **Health:** `GET http://localhost:8080/health`  
 - **Transfer:** `POST http://localhost:8080/api/transfer` (see [Fund Transfer API](#fund-transfer-api) below)
 
-**Run tests:**
-
-```bash
-docker compose run --rm -e APP_ENV=test app php vendor/bin/phpunit
-```
+**Run tests:** `make test` or `docker compose run --rm -e APP_ENV=test -e DATABASE_URL="mysql://app:app@mysql:3306/app_test?serverVersion=8.4" app sh -c "php bin/console cache:clear --env=test --no-warmup && php vendor/bin/phpunit"`
 
 ---
 
@@ -52,16 +53,16 @@ Secure API for transferring funds between accounts. Uses [moneyphp/money](https:
 
 1. Start services: `docker compose up -d`  
    On **first** MySQL start (empty volume), the test database `app_test` is created automatically (see `docker/mysql/init/01-create-test-db.sql`). If MySQL was already running before, run that SQL manually or recreate the volume.
-2. Run migrations: `composer migrations:migrate` or `docker compose run --rm app php bin/console doctrine:migrations:migrate --no-interaction`  
-   If you see "previously executed migrations that are not registered", remove orphaned entries with `php bin/console doctrine:migrations:version 'DoctrineMigrations\VersionXXXX' --delete` (run in app container or locally; use `--env=test` for test DB).
+2. Run migrations: `make migrate` or `docker compose run --rm app php bin/console doctrine:migrations:migrate --no-interaction`  
+   If you see "previously executed migrations that are not registered", remove orphaned entries with `docker compose run --rm app php bin/console doctrine:migrations:version 'DoctrineMigrations\VersionXXXX' --delete` (add `--env=test` for test DB).
 
-**Generating migrations from entities (Symfony):** after changing entity mappings, generate a new migration by comparing schema to the current DB:
+**Generating migrations from entities (Symfony):** after changing entity mappings, generate a new migration:
 
 ```bash
-composer migrations:diff
+docker compose run --rm app php bin/console doctrine:migrations:diff
 ```
 
-Or in Docker: `docker compose exec app php bin/console doctrine:migrations:diff`. This creates a new file in `migrations/` with the required SQL. Then run `composer migrations:migrate` to apply it.
+This creates a new file in `migrations/`. Then run `make migrate` to apply it.
 
 **One migration only via `doctrine:migrations:diff`:** to get a single migration that contains the full schema (instead of incremental diffs), run diff against an empty database: drop the DB (or use a fresh one), create it, then run diff. Example:
 
@@ -136,10 +137,16 @@ Transfer funds from one account to another.
 - `src/Application/` — use cases, ports (interfaces)
 - `src/Infrastructure/` — HTTP controllers, Doctrine
 
-## Run with Docker
+## Run with Docker Compose
+
+All commands (install, tests, migrations, QA) are intended to run via Docker Compose:
 
 ```bash
 docker compose up -d
+make install    # composer install in container
+make test       # PHPUnit in container
+make qa         # PHPStan + PHPCS + Rector + tests
+make migrate    # run migrations
 ```
 
 - App (Symfony via RoadRunner): http://localhost:8080
@@ -148,55 +155,38 @@ docker compose up -d
 
 ## Local development (without Docker)
 
-1. Install PHP 8.4+ (with bcmath extension for moneyphp/money), Composer, MySQL, [RoadRunner binary](https://roadrunner.dev/docs/intro-install).
-
-2. Install dependencies and RoadRunner binary:
-
-```bash
-composer install
-./vendor/bin/rr get --location bin/
-```
-
-3. Copy `.env` and set `DATABASE_URL`, `REDIS_URL`.
-
-4. Run RoadRunner:
-
-```bash
-bin/rr serve
-```
+All commands (install, tests, QA) run only via Docker Compose; see `make help`.
 
 ## Tests
 
-Tests require the `app_test` database (created automatically on first `docker compose up` when using Docker). Migrations run automatically before tests (via `tests/bootstrap.php`).
+Tests require the `app_test` database (created automatically on first `docker compose up`). Migrations run automatically before tests (via `tests/bootstrap.php`).
 
 ```bash
-composer install
-bin/phpunit
+make test
 ```
 
-If tests fail with **Table 'app.accounts' doesn't exist** or "previously executed migrations that are not registered", reset the test DB and run migrations from scratch:
+If tests fail with **Table 'app.accounts' doesn't exist** or "previously executed migrations that are not registered", reset the test DB and run migrations:
 
 ```bash
-composer test:db-reset
-bin/phpunit
+docker compose run --rm -e APP_ENV=test app php bin/console doctrine:schema:drop --full-database --force --env=test
+docker compose run --rm -e APP_ENV=test app php bin/console doctrine:migrations:migrate --no-interaction --env=test
+make test
 ```
-
-In Docker: `docker compose exec app composer test:db-reset` then run your test command.
 
 ## Deployment
 
-During deployment, run migrations so the database schema is up to date. Doctrine tracks executed migrations in the `doctrine_migration_versions` table and runs only those not yet applied on that database. See [DoctrineMigrationsBundle — Running Migrations during Deployment](https://symfony.com/bundles/DoctrineMigrationsBundle/current/index.html#running-migrations-during-deployment).
+During deployment, run migrations so the database schema is up to date. Doctrine tracks executed migrations in the `doctrine_migration_versions` table and runs only those not yet applied. See [DoctrineMigrationsBundle — Running Migrations during Deployment](https://symfony.com/bundles/DoctrineMigrationsBundle/current/index.html#running-migrations-during-deployment).
 
 ```bash
-composer migrations:migrate
+make migrate
 ```
 
-Run this after deploying the code and before (or when) starting the app. Safe to run on every deploy: only pending migrations are executed.
+Or: `docker compose run --rm app php bin/console doctrine:migrations:migrate --no-interaction`. Safe to run on every deploy: only pending migrations are executed.
 
 ## Code quality
 
-Run all checks: `composer qa` (PHPStan + PHP_CodeSniffer).
+Run all checks via Docker: `make qa` (PHPStan + PHP_CodeSniffer + Rector dry-run + tests).
 
-- **PHPStan** — static analysis: `composer phpstan`. Config: `phpstan.neon`. Run `php bin/console cache:clear` first if Symfony container is missing.
-- **PHP_CodeSniffer** — PSR-12: `composer phpcs`; auto-fix: `composer phpcbf`. Config: `phpcs.xml.dist`
-- **Rector** — refactoring & upgrades: `composer rector:dry` (preview), `composer rector` (apply). Config: `rector.php`
+- **PHPStan** — `make phpstan` or `docker compose run --rm app composer phpstan` (after `make cache-clear-test` for test env).
+- **PHP_CodeSniffer** — `make phpcs` (check), `make phpcbf` (fix). Config: `phpcs.xml.dist`
+- **Rector** — `make rector-dry` (preview), `make rector` (apply). Config: `rector.php`

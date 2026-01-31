@@ -15,6 +15,7 @@ use App\Infrastructure\Persistence\Doctrine\Entity\LedgerEntryEntity;
 use App\Infrastructure\Persistence\Doctrine\Entity\TransactionEntity;
 use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
+use Symfony\Component\Clock\ClockInterface;
 use InvalidArgumentException;
 use Money\Currency;
 use Money\Money;
@@ -39,11 +40,12 @@ use Symfony\Component\Uid\Uuid;
 final readonly class TransferFundsHandler
 {
     /** Technical FX accounts: sold-currency leg (FX_SOLD_POOL) and bought-currency leg (FX_BOUGHT_POOL). */
-    private const FX_DEBIT_ACCOUNT_ID  = '00000000-0000-0000-0000-000000000001';
-    private const FX_CREDIT_ACCOUNT_ID = '00000000-0000-0000-0000-000000000002';
+    private const string FX_DEBIT_ACCOUNT_ID  = '00000000-0000-0000-0000-000000000001';
+    private const string FX_CREDIT_ACCOUNT_ID = '00000000-0000-0000-0000-000000000002';
 
     public function __construct(
         private AccountRepositoryInterface $accounts,
+        private ClockInterface $clock,
         private ExchangeRateProviderInterface $exchangeRates,
         private IdempotencyStoreInterface $idempotencyStore,
         private EntityManagerInterface $em,
@@ -58,7 +60,7 @@ final readonly class TransferFundsHandler
         }
 
         $existing = $this->idempotencyStore->get($command->idempotencyKey);
-        if ($existing !== null) {
+        if ($existing instanceof \App\Application\Transfer\TransferFundsResult) {
             return $existing;
         }
 
@@ -87,7 +89,7 @@ final readonly class TransferFundsHandler
             );
         }
 
-        $now = new DateTimeImmutable();
+        $now = $this->clock->now();
         $hold = new HoldEntity(
             Uuid::v4(),
             $fromAccountUuid,
@@ -95,7 +97,6 @@ final readonly class TransferFundsHandler
             HoldStatus::Active,
             $now,
             'transfer',
-            null,
         );
         $this->em->persist($hold);
 
@@ -129,9 +130,25 @@ final readonly class TransferFundsHandler
             $this->em->persist($transaction);
 
             if ($isFx) {
-                $this->persistFxLedgerEntries($transactionId, $fromAccountUuid, $toAccountUuid, $debitAmount, $creditAmount, $rateStr, $spreadStr, $now);
+                $this->persistFxLedgerEntries(
+                    $transactionId,
+                    $fromAccountUuid,
+                    $toAccountUuid,
+                    $debitAmount,
+                    $creditAmount,
+                    $rateStr,
+                    $spreadStr,
+                    $now,
+                );
             } else {
-                $this->persistSameCurrencyLedgerEntries($transactionId, $fromAccountUuid, $toAccountUuid, $debitAmount, $creditAmount, $now);
+                $this->persistSameCurrencyLedgerEntries(
+                    $transactionId,
+                    $fromAccountUuid,
+                    $toAccountUuid,
+                    $debitAmount,
+                    $creditAmount,
+                    $now,
+                );
             }
 
             $hold->setStatus(HoldStatus::Captured);
@@ -153,7 +170,8 @@ final readonly class TransferFundsHandler
             'from' => $fromKey,
             'to' => $toKey,
             'debit' => $debitAmount->getAmount() . ' ' . $debitAmount->getCurrency()->getCode(),
-            'credit' => $creditAmount->getAmount() . ' ' . $creditAmount->getCurrency()->getCode(),
+            'credit' => $creditAmount->getAmount() . ' '
+                . $creditAmount->getCurrency()->getCode(),
             'rate' => $rateStr,
             'spread' => $spreadStr,
         ]);
@@ -177,8 +195,22 @@ final readonly class TransferFundsHandler
         Money $creditAmount,
         DateTimeImmutable $now,
     ): void {
-        $this->em->persist(new LedgerEntryEntity(Uuid::v4(), $transactionId, $fromAccountUuid, LedgerSide::Debit, $debitAmount, $now));
-        $this->em->persist(new LedgerEntryEntity(Uuid::v4(), $transactionId, $toAccountUuid, LedgerSide::Credit, $creditAmount, $now));
+        $this->em->persist(new LedgerEntryEntity(
+            Uuid::v4(),
+            $transactionId,
+            $fromAccountUuid,
+            LedgerSide::Debit,
+            $debitAmount,
+            $now,
+        ));
+        $this->em->persist(new LedgerEntryEntity(
+            Uuid::v4(),
+            $transactionId,
+            $toAccountUuid,
+            LedgerSide::Credit,
+            $creditAmount,
+            $now,
+        ));
     }
 
     private function persistFxLedgerEntries(
@@ -194,11 +226,47 @@ final readonly class TransferFundsHandler
         $fxDebitUuid = Uuid::fromString(self::FX_DEBIT_ACCOUNT_ID);
         $fxCreditUuid = Uuid::fromString(self::FX_CREDIT_ACCOUNT_ID);
 
-        $this->em->persist(new LedgerEntryEntity(Uuid::v4(), $transactionId, $fromAccountUuid, LedgerSide::Debit, $debitAmount, $now));
-        $this->em->persist(new LedgerEntryEntity(Uuid::v4(), $transactionId, $fxDebitUuid, LedgerSide::Credit, $debitAmount, $now));
-        $this->em->persist(new LedgerEntryEntity(Uuid::v4(), $transactionId, $fxCreditUuid, LedgerSide::Debit, $creditAmount, $now));
-        $this->em->persist(new LedgerEntryEntity(Uuid::v4(), $transactionId, $toAccountUuid, LedgerSide::Credit, $creditAmount, $now));
-        $this->em->persist(new FxTransactionEntity(Uuid::v4(), $transactionId, $debitAmount, $creditAmount, $rateStr, $spreadStr, $now));
+        $this->em->persist(new LedgerEntryEntity(
+            Uuid::v4(),
+            $transactionId,
+            $fromAccountUuid,
+            LedgerSide::Debit,
+            $debitAmount,
+            $now,
+        ));
+        $this->em->persist(new LedgerEntryEntity(
+            Uuid::v4(),
+            $transactionId,
+            $fxDebitUuid,
+            LedgerSide::Credit,
+            $debitAmount,
+            $now,
+        ));
+        $this->em->persist(new LedgerEntryEntity(
+            Uuid::v4(),
+            $transactionId,
+            $fxCreditUuid,
+            LedgerSide::Debit,
+            $creditAmount,
+            $now,
+        ));
+        $this->em->persist(new LedgerEntryEntity(
+            Uuid::v4(),
+            $transactionId,
+            $toAccountUuid,
+            LedgerSide::Credit,
+            $creditAmount,
+            $now,
+        ));
+        $this->em->persist(new FxTransactionEntity(
+            Uuid::v4(),
+            $transactionId,
+            $debitAmount,
+            $creditAmount,
+            $rateStr,
+            $spreadStr,
+            $now,
+        ));
     }
 
     private function detachScheduledLedgerAndFx(): void

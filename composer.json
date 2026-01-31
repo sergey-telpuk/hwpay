@@ -13,6 +13,7 @@
         "doctrine/doctrine-migrations-bundle": "^3.4",
         "doctrine/orm": "^3.4",
         "moneyphp/money": "4.8.0",
+        "symfony/clock": "^8.0",
         "symfony/console": "^8.0",
         "symfony/doctrine-messenger": "*",
         "symfony/dotenv": "^8.0",

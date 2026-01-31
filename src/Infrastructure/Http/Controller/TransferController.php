@@ -103,8 +103,18 @@ final class TransferController
             return null;
         }
         $data = json_decode($content, true);
+        if (!is_array($data)) {
+            return null;
+        }
+        $out = [];
+        foreach ($data as $k => $v) {
+            if (!\is_string($k)) {
+                return null;
+            }
+            $out[$k] = $v;
+        }
 
-        return is_array($data) ? /** @var array<string, mixed> */ $data : null;
+        return $out;
     }
 
     /** @param array<string, mixed> $payload

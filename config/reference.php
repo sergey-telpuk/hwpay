@@ -299,7 +299,7 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *         },
  *     },
  *     translator?: bool|array{ // Translator configuration
- *         enabled?: bool|Param, // Default: true
+ *         enabled?: bool|Param, // Default: false
  *         fallbacks?: list<scalar|Param|null>,
  *         logging?: bool|Param, // Default: false
  *         formatter?: scalar|Param|null, // Default: "translator.formatter.default"
@@ -465,7 +465,7 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *     },
  *     disallow_search_engine_index?: bool|Param, // Enabled by default when debug is enabled. // Default: true
  *     http_client?: bool|array{ // HTTP Client configuration
- *         enabled?: bool|Param, // Default: true
+ *         enabled?: bool|Param, // Default: false
  *         max_host_connections?: int|Param, // The maximum number of connections to a single host.
  *         default_options?: array{
  *             headers?: array<string, mixed>,
@@ -681,6 +681,31 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *     },
  *     json_streamer?: bool|array{ // JSON streamer configuration
  *         enabled?: bool|Param, // Default: false
+ *     },
+ * }
+ * @psalm-type MoneyConfig = array{
+ *     form?: array{
+ *         enabled?: bool|Param, // Whether the Symfony Form integration is enabled. // Default: true
+ *     },
+ *     twig?: array{
+ *         enabled?: bool|Param, // Whether the Twig Engine integration is enabled. // Default: true
+ *     },
+ *     doctrine?: array{
+ *         enabled?: bool|Param, // Whether the Doctrine integration is enabled. // Default: true
+ *     },
+ *     currencies?: list<scalar|Param|null>,
+ *     formatters?: array{
+ *         intl?: array{
+ *             number_locale?: scalar|Param|null, // Default: "en_US"
+ *             number_style?: int|Param, // Default: 2
+ *             number_pattern?: scalar|Param|null, // Default: null
+ *         },
+ *         bitcoin?: array{
+ *             fraction_digits?: int|Param, // Default: 8
+ *         },
+ *     },
+ *     exchanges?: array{
+ *         fixed?: list<mixed>,
  *     },
  * }
  * @psalm-type DoctrineConfig = array{
@@ -1065,6 +1090,7 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *     parameters?: ParametersConfig,
  *     services?: ServicesConfig,
  *     framework?: FrameworkConfig,
+ *     money?: MoneyConfig,
  *     doctrine?: DoctrineConfig,
  *     doctrine_migrations?: DoctrineMigrationsConfig,
  *     monolog?: MonologConfig,
@@ -1074,6 +1100,7 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *         parameters?: ParametersConfig,
  *         services?: ServicesConfig,
  *         framework?: FrameworkConfig,
+ *         money?: MoneyConfig,
  *         doctrine?: DoctrineConfig,
  *         doctrine_migrations?: DoctrineMigrationsConfig,
  *         monolog?: MonologConfig,
@@ -1084,6 +1111,7 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *         parameters?: ParametersConfig,
  *         services?: ServicesConfig,
  *         framework?: FrameworkConfig,
+ *         money?: MoneyConfig,
  *         doctrine?: DoctrineConfig,
  *         doctrine_migrations?: DoctrineMigrationsConfig,
  *         monolog?: MonologConfig,
@@ -1094,6 +1122,7 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *         parameters?: ParametersConfig,
  *         services?: ServicesConfig,
  *         framework?: FrameworkConfig,
+ *         money?: MoneyConfig,
  *         doctrine?: DoctrineConfig,
  *         doctrine_migrations?: DoctrineMigrationsConfig,
  *         monolog?: MonologConfig,

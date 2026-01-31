@@ -41,6 +41,9 @@ services:
             $exchangeRates: '%exchange_rates%'
             $currencies: '@Money\Currencies'
 
+    Symfony\Component\Clock\Clock: ~
+    Symfony\Component\Clock\ClockInterface: '@Symfony\Component\Clock\Clock'
+
     App\Application\Transfer\TransferFundsHandler:
         arguments:
             $exchangeRates: '@App\Application\Transfer\ExchangeRateProviderInterface'
