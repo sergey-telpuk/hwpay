@@ -55,3 +55,7 @@ services:
     App\Infrastructure\Idempotency\RedisIdempotencyStore:
         arguments:
             $cache: '@cache.app'
+
+    App\Infrastructure\Http\EventSubscriber\JsonExceptionSubscriber:
+        arguments:
+            $environment: '%kernel.environment%'

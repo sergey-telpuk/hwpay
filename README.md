@@ -6,187 +6,283 @@
 [![Rector](https://img.shields.io/github/actions/workflow/status/sergey-telpuk/hwpay/tests.yml?branch=main&label=Rector)](https://github.com/sergey-telpuk/hwpay/actions/workflows/tests.yml)
 [![PHP 8.5](https://img.shields.io/badge/PHP-8.5-777BB4?logo=php&logoColor=white)](https://www.php.net/)
 
-A secure API for transferring funds between accounts. PHP 8.5, Symfony 8, MySQL, Redis, Docker Compose.
-
-### Submission (task requirements)
-
-- **Install & run:** see [How to install and run](#how-to-install-and-run) below.
-- **Time spent:** ~8 hours
-- **AI tools and prompts used:** Cursor, ChatGPT
+A secure REST API for transferring funds between accounts. Built with PHP 8.5, Symfony 8, MySQL, Redis, and Docker Compose.
 
 ---
 
-## How to install and run
+## Table of contents
 
-**Prerequisites:** Docker and Docker Compose. All commands run via Docker Compose.
+- [Prerequisites](#prerequisites)
+- [Getting started](#getting-started)
+- [API](#api)
+- [Stack](#stack)
+- [Project structure](#project-structure)
+- [Development](#development)
+  - [Connecting to the database](#connecting-to-the-database-local-inspection)
+- [Architecture](#architecture)
+- [Deployment](#deployment)
+- [Possible improvements](#possible-improvements)
+
+---
+
+## Prerequisites
+
+- **Docker** and **Docker Compose**
+- No local PHP or Composer required; all commands run inside containers.
+
+---
+
+## Getting started
+
+### 1. Clone and start services
 
 ```bash
 git clone https://github.com/sergey-telpuk/hwpay.git
 cd hwpay
 docker compose up -d
+```
+
+Wait a few seconds for MySQL and Redis. API base URL: **http://localhost:8080**.
+
+### 2. Run migrations
+
+```bash
 make migrate
 ```
 
-Or without Make: `docker compose run --rm app php bin/console doctrine:migrations:migrate --no-interaction`.
+Without Make: `docker compose run --rm app php bin/console doctrine:migrations:migrate --no-interaction`
 
-- **API:** http://localhost:8080  
-- **Health:** `GET http://localhost:8080/health`  
-- **Transfer:** `POST http://localhost:8080/api/transfer` (see [Fund Transfer API](#fund-transfer-api) below)
+### 3. (Optional) Seed test accounts
 
-**Run tests:** `make test` or `docker compose run --rm -e APP_ENV=test -e DATABASE_URL="mysql://app:app@mysql:3306/app_test?serverVersion=8.4" app sh -c "php bin/console cache:clear --env=test --no-warmup && php vendor/bin/phpunit"`
+For manual testing of `POST /api/transfer` with pre-funded accounts:
+
+```bash
+docker compose run --rm app php bin/console app:seed-manual-test-accounts
+```
+
+Creates:
+
+- `...000010` — 100.00 USD  
+- `...000011` — 50.00 USD  
+- `...000020` — 200.00 USD (for cross-currency)  
+- `...000021` — 0 EUR (target for USD→EUR transfer)  
+
+### 4. Smoke test
+
+- **Health:** `GET http://localhost:8080/health` → `200`, `{"status":"ok"}`
+- **Transfer:** `POST http://localhost:8080/api/transfer` with JSON body (see [API](#api)); use the account IDs from step 3 or your own.
+
+Example with cURL:
+
+```bash
+curl -s -X POST http://localhost:8080/api/transfer \
+  -H "Content-Type: application/json" \
+  -d '{"from_account_id":"00000000-0000-0000-0000-000000000010","to_account_id":"00000000-0000-0000-0000-000000000011","amount_minor":1000,"idempotency_key":"demo-1"}'
+```
+
+You can also use `http/transfer.http` in PhpStorm or VS Code.
+
+### 5. Run tests and QA
+
+```bash
+make test   # PHPUnit (test DB and migrations are used automatically)
+make qa     # PHPStan + PHPCS + Rector dry-run + tests (same as CI)
+```
+
+---
+
+## API
+
+All API errors (including 5xx) are returned as JSON for `/api/*` and when `Accept: application/json` is sent.
+
+### Health
+
+| Method | URL           | Description   |
+|--------|---------------|---------------|
+| GET    | `/health`     | Liveness check |
+
+**Response (200):** `{"status":"ok"}`
+
+### Transfer funds
+
+| Method | URL            | Description      |
+|--------|----------------|------------------|
+| POST   | `/api/transfer`| Transfer between accounts |
+
+**Request (JSON):**
+
+| Field            | Type   | Required | Description |
+|------------------|--------|----------|-------------|
+| `from_account_id`| string | yes     | Source account UUID |
+| `to_account_id` | string | yes     | Target account UUID |
+| `amount_minor`   | number | yes     | Amount in smallest unit (e.g. cents) |
+| `idempotency_key`| string | yes     | Unique key per logical transfer (duplicates return same result) |
+
+Example:
+
+```json
+{
+  "from_account_id": "00000000-0000-0000-0000-000000000010",
+  "to_account_id": "00000000-0000-0000-0000-000000000011",
+  "amount_minor": 1000,
+  "idempotency_key": "unique-key-per-request"
+}
+```
+
+**Response (200):**
+
+```json
+{
+  "transfer_id": "uuid",
+  "from_account_id": "uuid",
+  "to_account_id": "uuid",
+  "amount_minor": 1000
+}
+```
+
+**Error responses:**
+
+| Status | Meaning |
+|--------|---------|
+| 400 | Invalid JSON, empty body, same from/to account, or bad request (e.g. missing FX rate) |
+| 404 | Account not found (from or to) |
+| 422 | Validation errors (`errors` object) or insufficient balance (`error` string) |
+| 500 | Server error (body is JSON with `error` and optional `detail` in dev) |
 
 ---
 
 ## Stack
 
-- **Symfony 8** — HTTP API
-- **RoadRunner** — application server (HTTP)
-- **MySQL** — app database
-- **Redis** — idempotency and caching for high load
-- **PHPUnit** — tests
+| Layer    | Technology |
+|----------|------------|
+| API      | Symfony 8  |
+| Server   | RoadRunner |
+| Database | MySQL 8    |
+| Cache    | Redis (idempotency) |
+| Tests    | PHPUnit 11 |
 
-## Fund Transfer API
+Uses [moneyphp/money](https://github.com/moneyphp/money) and [yceruto/money-bundle](https://github.com/yceruto/money-bundle) for currency; pessimistic locking and double-entry ledger for integrity.
 
-Secure API for transferring funds between accounts. Uses [moneyphp/money](https://github.com/moneyphp/money) for currency handling, [yceruto/money-bundle](https://github.com/yceruto/money-bundle) for Doctrine integration (Embedded Money), pessimistic locking for transaction integrity, and Redis for idempotency.
+---
 
-### Setup
+## Project structure
 
-1. Start services: `docker compose up -d`  
-   On **first** MySQL start (empty volume), the test database `app_test` is created automatically (see `docker/mysql/init/01-create-test-db.sql`). If MySQL was already running before, run that SQL manually or recreate the volume.
-2. Run migrations: `make migrate` or `docker compose run --rm app php bin/console doctrine:migrations:migrate --no-interaction`  
-   If you see "previously executed migrations that are not registered", remove orphaned entries with `docker compose run --rm app php bin/console doctrine:migrations:version 'DoctrineMigrations\VersionXXXX' --delete` (add `--env=test` for test DB).
+```
+src/
+├── Domain/         # Entities, value objects, domain exceptions
+├── Application/    # Use cases, ports (interfaces)
+└── Infrastructure/ # HTTP, Doctrine, Redis, console
+```
 
-**Generating migrations from entities (Symfony):** after changing entity mappings, generate a new migration:
+See [Architecture](#architecture) and `docs/FX_LEDGER.md` for design details.
 
+---
+
+## Development
+
+### Commands (all via Docker)
+
+| Command       | Description |
+|---------------|-------------|
+| `make install`| Composer install |
+| `make test`   | PHPUnit |
+| `make qa`     | PHPStan + PHPCS + Rector dry-run + tests |
+| `make migrate`| Run Doctrine migrations |
+| `make phpstan`| PHPStan only |
+| `make phpcs`  | PHP_CodeSniffer (check) |
+| `make phpcbf` | PHP_CodeSniffer (fix) |
+| `make rector-dry` | Rector preview |
+| `make rector` | Rector apply |
+| `make cache-clear` | Clear Symfony cache |
+
+Run `make help` for the full list.
+
+### Connecting to the database (local inspection)
+
+With `docker compose up -d`, MySQL is exposed on **localhost:3306**. Use these settings in any client (DBeaver, TablePlus, MySQL Workbench, DataGrip, etc.):
+
+| Setting   | Value    |
+|-----------|----------|
+| Host      | `localhost` |
+| Port      | `3306`   |
+| User      | `app`    |
+| Password  | `app`    |
+| Database  | `app` (main) or `app_test` (tests) |
+
+**Connection string (JDBC/ODBC):**  
+`jdbc:mysql://localhost:3306/app?user=app&password=app`
+
+**CLI (from host):**
 ```bash
-docker compose run --rm app php bin/console doctrine:migrations:diff
+mysql -h 127.0.0.1 -P 3306 -u app -papp app
 ```
+(Password is `app`; use `app_test` instead of `app` for the test database.)
 
-This creates a new file in `migrations/`. Then run `make migrate` to apply it.
-
-**One migration only via `doctrine:migrations:diff`:** to get a single migration that contains the full schema (instead of incremental diffs), run diff against an empty database: drop the DB (or use a fresh one), create it, then run diff. Example:
-
+**CLI (inside Docker):**
 ```bash
-docker compose run --rm app php bin/console doctrine:database:drop --force --if-exists
-docker compose run --rm app php bin/console doctrine:database:create --if-not-exists
-docker compose run --rm app php bin/console doctrine:migrations:diff --no-interaction
+docker compose exec mysql mysql -u app -papp app
 ```
 
-This generates one migration with all `CREATE TABLE` statements. The project’s single migration also adds foreign keys and the two technical FX accounts (inserts) manually, because entities use plain UUID columns and diff does not emit data.
-3. (Optional) Create accounts: insert into `accounts` table (`id` UUID, `owner_type`, `owner_id`, `currency`, `type`, `status`, `created_at`). Balance is derived from `ledger_entries` minus active `holds`; to fund an account you add ledger entries (see tests for seeding examples). Cross-currency transfers use configurable rates in `config/services.yaml` (`parameters.exchange_rates`).
+### Migrations
 
-### POST /api/transfer
+- **Apply:** `make migrate`
+- **Generate after entity changes:**  
+  `docker compose run --rm app php bin/console doctrine:migrations:diff`  
+  Then run `make migrate`.
+- **Reset test DB** (if tests fail with missing tables or migration conflicts):  
+  `docker compose run --rm -e APP_ENV=test app php bin/console doctrine:schema:drop --full-database --force --env=test`  
+  then run migrations for test env and `make test`.
 
-Transfer funds from one account to another.
+Test database `app_test` is created on first `docker compose up` (see `docker/mysql/init/01-create-test-db.sql`). Migrations run automatically before tests via `tests/bootstrap.php`.
 
-**Request** (JSON):
+### Code quality
 
-```json
-{
-  "from_account_id": "account-uuid-1",
-  "to_account_id": "account-uuid-2",
-  "amount_minor": 10000,
-  "idempotency_key": "unique-key-per-request"
-}
-```
+- **PHPStan:** `make phpstan` — config: `phpstan.neon`
+- **PHP_CodeSniffer:** `make phpcs` / `make phpcbf` — config: `phpcs.xml.dist`
+- **Rector:** `make rector-dry` / `make rector` — config: `rector.php`
 
-- `amount_minor` — amount in smallest currency unit (e.g. cents).
-- `idempotency_key` — unique key per logical transfer; duplicate requests with the same key return the same result (stored in Redis 24h).
+---
 
-**Response** (200):
+## Architecture
 
-```json
-{
-  "transfer_id": "uuid-of-the-created-transaction",
-  "from_account_id": "account-uuid-1",
-  "to_account_id": "account-uuid-2",
-  "amount_minor": 10000
-}
-```
+- **DDD:** Domain, Application (ports), Infrastructure (adapters).
+- **Double-entry ledger:** Balances from `ledger_entries`; no stored balance column.
+- **Holds:** Each transfer creates a hold (Active → Captured or Released). Available balance = ledger balance − active holds.
+- **FX:** Cross-currency transfers use technical FX accounts and 4 ledger entries; see `docs/FX_LEDGER.md`.
+- **Idempotency:** `idempotency_key` stored in DB (`transactions.external_id`) and Redis (24h TTL).
+- **Concurrency:** Pessimistic lock (`FOR UPDATE`) on both accounts in deterministic order (by ID) to avoid deadlocks.
+- **Error handling:** Failed transfers persist transaction as Failed and hold as Released when possible; API returns JSON errors for `/api/*`.
 
-**Errors:**
+Exchange rates are configured in `config/services.yaml` under `parameters.exchange_rates`.
 
-- `400` — Invalid JSON, empty body, same from/to account, or bad request (e.g. no FX rate).
-- `404` — Account not found (from or to).
-- `422` — Validation errors (see `errors` object) or insufficient balance (see `error`).
-
-## Architecture and design
-
-- **DDD-style layout:** `Domain` (Account, exceptions, enums), `Application` (commands, handlers, ports), `Infrastructure` (HTTP, Doctrine, repositories).
-- **Double-entry ledger:** Balances are computed from `ledger_entries` (debit/credit per account and currency). No stored balance column; integrity via sum of entries.
-- **Holds:** Each transfer creates a hold (Active) on the source account; on success it is set to Captured, on failure to Released. Available balance = ledger balance − active (non-expired) holds.
-- **FX:** Cross-currency transfers create 4 ledger entries via technical FX accounts (sold-currency leg and bought-currency leg) so each currency balances; plus one `fx_transactions` row for rate/spread. See `docs/FX_LEDGER.md`.
-- **Idempotency:** By `idempotency_key` (stored in `transactions.external_id` and in Redis for cache). Duplicate request returns the same result without double-spend.
-- **Concurrency:** Pessimistic lock (`FOR UPDATE`) on both accounts in a deterministic order (by account id) to avoid deadlocks.
-- **Errors:** On handler failure after creating the hold, if the EntityManager is still open we persist the transaction as Failed and the hold as Released for audit; then rethrow.
-
-**Implementation:** The code follows the above flow. Idempotency is implemented via `TransactionRepository::findOneByExternalId` (DB column `transactions.external_id`) and Redis cache in the controller (24h TTL). Balance and holds: `AccountRepository::toAccount` uses `LedgerRepository::getBalanceForAccount` minus `HoldRepository::getActiveHoldsSum` (only Active holds with `expires_at` null or future). Lock order and hold/transaction status transitions are in `TransferFundsHandler`; FX entries in `persistFxLedgerEntries`. See `docs/FX_LEDGER.md` for the 4-entry FX table.
-
-## Possible improvements
-
-- **Rate limiting** and **auth** (e.g. API key or JWT) on `/api/transfer`.
-- **Pagination and filters** for a future “list transfers” or “list ledger entries” endpoint.
-- **Saga/outbox** if we introduce async steps (e.g. notify external system) to keep consistency.
-- **Async manipulation and interaction between microservices:** for event-driven or multi-service architecture, [Temporal](https://temporal.io/) (or similar) would be useful — workflows, retries, compensation.
-- **Scheduled job** to set expired holds to status Expired (we already exclude them from available balance by `expires_at` in the query).
-- **Metrics** (e.g. Prometheus) for transfer count, latency, errors.
-
-## Structure (DDD)
-
-- `src/Domain/` — entities, value objects, domain logic
-- `src/Application/` — use cases, ports (interfaces)
-- `src/Infrastructure/` — HTTP controllers, Doctrine
-
-## Run with Docker Compose
-
-All commands (install, tests, migrations, QA) are intended to run via Docker Compose:
-
-```bash
-docker compose up -d
-make install    # composer install in container
-make test       # PHPUnit in container
-make qa         # PHPStan + PHPCS + Rector + tests
-make migrate    # run migrations
-```
-
-- App (Symfony via RoadRunner): http://localhost:8080
-- MySQL: localhost:3306 (user `app`, password `app`, databases `app` and `app_test` for tests)
-- Redis: localhost:6379
-
-## Local development (without Docker)
-
-All commands (install, tests, QA) run only via Docker Compose; see `make help`.
-
-## Tests
-
-Tests require the `app_test` database (created automatically on first `docker compose up`). Migrations run automatically before tests (via `tests/bootstrap.php`).
-
-```bash
-make test
-```
-
-If tests fail with **Table 'app.accounts' doesn't exist** or "previously executed migrations that are not registered", reset the test DB and run migrations:
-
-```bash
-docker compose run --rm -e APP_ENV=test app php bin/console doctrine:schema:drop --full-database --force --env=test
-docker compose run --rm -e APP_ENV=test app php bin/console doctrine:migrations:migrate --no-interaction --env=test
-make test
-```
+---
 
 ## Deployment
 
-During deployment, run migrations so the database schema is up to date. Doctrine tracks executed migrations in the `doctrine_migration_versions` table and runs only those not yet applied. See [DoctrineMigrationsBundle — Running Migrations during Deployment](https://symfony.com/bundles/DoctrineMigrationsBundle/current/index.html#running-migrations-during-deployment).
+1. Run migrations on deploy so the schema is up to date:
+   ```bash
+   make migrate
+   ```
+   Or: `docker compose run --rm app php bin/console doctrine:migrations:migrate --no-interaction`  
+   Doctrine runs only pending migrations; safe to run on every deploy.
 
-```bash
-make migrate
-```
+2. Ensure Redis and MySQL are available at the URLs configured in `DATABASE_URL` and `REDIS_URL`.
 
-Or: `docker compose run --rm app php bin/console doctrine:migrations:migrate --no-interaction`. Safe to run on every deploy: only pending migrations are executed.
+---
 
-## Code quality
+## Possible improvements
 
-Run all checks via Docker: `make qa` (PHPStan + PHP_CodeSniffer + Rector dry-run + tests).
+- **Rate limiting** and **authentication** (e.g. API key or JWT) on `/api/transfer`
+- **Pagination and filters** for “list transfers” or “list ledger entries”
+- **Saga/outbox** for async steps (e.g. external notifications) with consistency guarantees
+- **Workflow engine** (e.g. [Temporal](https://temporal.io/)) for event-driven or multi-service flows
+- **Scheduled job** to mark expired holds (already excluded from available balance by query)
+- **Metrics** (e.g. Prometheus) for throughput, latency, errors
 
-- **PHPStan** — `make phpstan` or `docker compose run --rm app composer phpstan` (after `make cache-clear-test` for test env).
-- **PHP_CodeSniffer** — `make phpcs` (check), `make phpcbf` (fix). Config: `phpcs.xml.dist`
-- **Rector** — `make rector-dry` (preview), `make rector` (apply). Config: `rector.php`
+---
+
+## Submission (task requirements)
+
+- **Install & run:** [Getting started](#getting-started) above.
+- **Time spent:** ~8 hours
+- **AI tools used:** Cursor, ChatGPT

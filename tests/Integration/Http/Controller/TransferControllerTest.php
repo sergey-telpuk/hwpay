@@ -135,7 +135,7 @@ final class TransferControllerTest extends TransactionalWebTestCase
         ));
     }
 
-    /** Пустое тело запроса → 400 */
+    /** Empty request body → 400 */
     #[Test]
     public function transferEmptyBodyReturns400(): void
     {
@@ -154,7 +154,7 @@ final class TransferControllerTest extends TransactionalWebTestCase
         $this->assertSame('Invalid JSON', $data['error']);
     }
 
-    /** Невалидный JSON → 400 */
+    /** Invalid JSON → 400 */
     #[Test]
     public function transferInvalidJsonReturns400(): void
     {
@@ -202,7 +202,7 @@ final class TransferControllerTest extends TransactionalWebTestCase
         $this->assertArrayHasKey('error', $data);
     }
 
-    /** Счёт получателя не найден → 404 */
+    /** To account not found → 404 */
     #[Test]
     public function transferAccountNotFoundReturns404(): void
     {
@@ -229,7 +229,7 @@ final class TransferControllerTest extends TransactionalWebTestCase
         $this->assertArrayHasKey('error', $data);
     }
 
-    /** Счёт отправителя не найден → 404 */
+    /** From account not found → 404 */
     #[Test]
     public function transferFromAccountNotFoundReturns404(): void
     {
@@ -256,7 +256,7 @@ final class TransferControllerTest extends TransactionalWebTestCase
         $this->assertArrayHasKey('error', $data);
     }
 
-    /** 1) Не хватает денег → 422 */
+    /** 1) Insufficient balance → 422 */
     #[Test]
     public function transferInsufficientBalanceReturns422(): void
     {
@@ -284,7 +284,7 @@ final class TransferControllerTest extends TransactionalWebTestCase
         $this->assertArrayHasKey('error', $data);
     }
 
-    /** 2) Хватает денег → успех */
+    /** 2) Sufficient balance → success */
     #[Test]
     public function transferSuccess(): void
     {
@@ -371,7 +371,7 @@ final class TransferControllerTest extends TransactionalWebTestCase
         $this->assertSame($first, $client->getResponse()->getContent());
     }
 
-    /** 3) Кросс-валюта: разная валюта (USD→EUR) → успех с конвертацией */
+    /** 3) Cross-currency (USD→EUR) → success with conversion */
     #[Test]
     public function transferCrossCurrencySucceeds(): void
     {
@@ -404,7 +404,7 @@ final class TransferControllerTest extends TransactionalWebTestCase
         $this->assertSame(self::ACC_EUR, $data['to_account_id']);
         $this->assertSame(10_000, $data['amount_minor']);
 
-        // Проверяем конвертацию: 10000 USD × 0.92 = 9200 EUR на счёте получателя
+        // Verify conversion: 10000 USD × 0.92 = 9200 EUR on recipient account
         $accounts = $client->getContainer()->get(AccountRepositoryInterface::class);
         $this->assertInstanceOf(AccountRepositoryInterface::class, $accounts);
         $toAccount = $accounts->get(new AccountId(self::ACC_EUR));
@@ -431,7 +431,7 @@ final class TransferControllerTest extends TransactionalWebTestCase
         $this->assertCount(1, $holds, 'FX transfer must create one hold with status Captured');
     }
 
-    /** 4) Кросс-валюта: курс недоступен (GBP→JPY) → 400 */
+    /** 4) Cross-currency: rate unavailable (GBP→JPY) → 400 */
     #[Test]
     public function transferCrossCurrencyNoRateReturns400(): void
     {
@@ -461,7 +461,7 @@ final class TransferControllerTest extends TransactionalWebTestCase
         $this->assertArrayHasKey('error', $data);
     }
 
-    /** 5) Кросс-валюта: одна валюта (USD→USD) → успех */
+    /** 5) Cross-currency: same currency (USD→USD) → success */
     #[Test]
     public function transferSameCurrencySucceeds(): void
     {

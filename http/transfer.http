@@ -1,0 +1,60 @@
+### HWPay API — PhpStorm HTTP Client
+### Base URL (app via Docker: http://localhost:8080)
+@baseUrl = http://localhost:8080
+### First run: docker compose run --rm app php bin/console app:seed-manual-test-accounts
+### (Creates 010=100 USD, 011=50 USD, 020=200 USD, 021=0 EUR for cross-currency)
+
+### Health check
+GET {{baseUrl}}/health
+
+### POST /api/transfer — same currency (USD → USD)
+### Accounts 000...010 (100 USD) and 000...011 (50 USD) after seed command above
+POST {{baseUrl}}/api/transfer
+Content-Type: application/json
+
+{
+  "from_account_id": "00000000-0000-0000-0000-000000000010",
+  "to_account_id": "00000000-0000-0000-0000-000000000011",
+  "amount_minor": 1000,
+  "idempotency_key": "test-transfer-{{$timestamp}}"
+}
+
+### POST /api/transfer — idempotent (same key returns same result)
+POST {{baseUrl}}/api/transfer
+Content-Type: application/json
+
+{
+  "from_account_id": "00000000-0000-0000-0000-000000000010",
+  "to_account_id": "00000000-0000-0000-0000-000000000011",
+  "amount_minor": 500,
+  "idempotency_key": "idempotent-key-123"
+}
+
+### POST /api/transfer — cross-currency (USD → EUR, rate from config)
+### 020 = 200 USD, 021 = 0 EUR (both created by seed command above)
+POST {{baseUrl}}/api/transfer
+Content-Type: application/json
+
+{
+  "from_account_id": "00000000-0000-0000-0000-000000000020",
+  "to_account_id": "00000000-0000-0000-0000-000000000021",
+  "amount_minor": 10000,
+  "idempotency_key": "fx-transfer-{{$timestamp}}"
+}
+
+### POST /api/transfer — validation error (same from/to)
+POST {{baseUrl}}/api/transfer
+Content-Type: application/json
+
+{
+  "from_account_id": "00000000-0000-0000-0000-000000000010",
+  "to_account_id": "00000000-0000-0000-0000-000000000010",
+  "amount_minor": 100,
+  "idempotency_key": "same-account-test"
+}
+
+### POST /api/transfer — invalid JSON
+POST {{baseUrl}}/api/transfer
+Content-Type: application/json
+
+{ invalid
