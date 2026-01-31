@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace DoctrineMigrations;
 
+use DateTimeImmutable;
+use Doctrine\DBAL\ParameterType;
 use Doctrine\DBAL\Schema\Schema;
 use Doctrine\Migrations\AbstractMigration;
+use Override;
 
 /**
  * Full schema from doctrine:migrations:diff (run against empty DB).
@@ -16,7 +19,7 @@ final class Version20260129155938 extends AbstractMigration
     private const string FX_DEBIT_ACCOUNT_ID  = '00000000-0000-0000-0000-000000000001';
     private const string FX_CREDIT_ACCOUNT_ID = '00000000-0000-0000-0000-000000000002';
 
-    #[\Override]
+    #[Override]
     public function getDescription(): string
     {
         return 'Schema (accounts, transactions, ledger_entries, holds, fx_transactions), FKs, technical FX accounts';
@@ -35,19 +38,19 @@ final class Version20260129155938 extends AbstractMigration
         $this->addSql('ALTER TABLE ledger_entries ADD CONSTRAINT fk_ledger_transaction FOREIGN KEY (transaction_id) REFERENCES transactions (id)');
         $this->addSql('ALTER TABLE fx_transactions ADD CONSTRAINT fk_fx_transaction FOREIGN KEY (transaction_id) REFERENCES transactions (id)');
 
-        $now = new \DateTimeImmutable()->format('Y-m-d H:i:s');
+        $now = new DateTimeImmutable()->format('Y-m-d H:i:s');
         $this->addSql(
             'INSERT INTO accounts (id, owner_type, owner_id, currency, type, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?), (?, ?, ?, ?, ?, ?, ?)',
             [self::FX_DEBIT_ACCOUNT_ID, 'system', 'fx', 'USD', 'fx_pool', 'active', $now, self::FX_CREDIT_ACCOUNT_ID, 'system', 'fx', 'EUR', 'fx_pool', 'active', $now],
-            [\Doctrine\DBAL\ParameterType::STRING, \Doctrine\DBAL\ParameterType::STRING, \Doctrine\DBAL\ParameterType::STRING, \Doctrine\DBAL\ParameterType::STRING, \Doctrine\DBAL\ParameterType::STRING, \Doctrine\DBAL\ParameterType::STRING, \Doctrine\DBAL\ParameterType::STRING, \Doctrine\DBAL\ParameterType::STRING, \Doctrine\DBAL\ParameterType::STRING, \Doctrine\DBAL\ParameterType::STRING, \Doctrine\DBAL\ParameterType::STRING, \Doctrine\DBAL\ParameterType::STRING, \Doctrine\DBAL\ParameterType::STRING],
+            [ParameterType::STRING, ParameterType::STRING, ParameterType::STRING, ParameterType::STRING, ParameterType::STRING, ParameterType::STRING, ParameterType::STRING, ParameterType::STRING, ParameterType::STRING, ParameterType::STRING, ParameterType::STRING, ParameterType::STRING, ParameterType::STRING],
         );
     }
 
-    #[\Override]
+    #[Override]
     public function down(Schema $schema): void
     {
-        $this->addSql('DELETE FROM ledger_entries WHERE account_id IN (?, ?)', [self::FX_DEBIT_ACCOUNT_ID, self::FX_CREDIT_ACCOUNT_ID], [\Doctrine\DBAL\ParameterType::STRING, \Doctrine\DBAL\ParameterType::STRING]);
-        $this->addSql('DELETE FROM accounts WHERE id IN (?, ?)', [self::FX_DEBIT_ACCOUNT_ID, self::FX_CREDIT_ACCOUNT_ID], [\Doctrine\DBAL\ParameterType::STRING, \Doctrine\DBAL\ParameterType::STRING]);
+        $this->addSql('DELETE FROM ledger_entries WHERE account_id IN (?, ?)', [self::FX_DEBIT_ACCOUNT_ID, self::FX_CREDIT_ACCOUNT_ID], [ParameterType::STRING, ParameterType::STRING]);
+        $this->addSql('DELETE FROM accounts WHERE id IN (?, ?)', [self::FX_DEBIT_ACCOUNT_ID, self::FX_CREDIT_ACCOUNT_ID], [ParameterType::STRING, ParameterType::STRING]);
         $this->addSql('ALTER TABLE holds DROP FOREIGN KEY fk_holds_account');
         $this->addSql('ALTER TABLE ledger_entries DROP FOREIGN KEY fk_ledger_account');
         $this->addSql('ALTER TABLE ledger_entries DROP FOREIGN KEY fk_ledger_transaction');

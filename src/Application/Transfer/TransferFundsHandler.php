@@ -40,8 +40,9 @@ use Symfony\Component\Uid\Uuid;
 final readonly class TransferFundsHandler
 {
     /** Technical FX accounts: sold-currency leg (FX_SOLD_POOL) and bought-currency leg (FX_BOUGHT_POOL). */
-    private const string FX_DEBIT_ACCOUNT_ID  = '00000000-0000-0000-0000-000000000001';
+    private const string FX_DEBIT_ACCOUNT_ID = '00000000-0000-0000-0000-000000000001';
     private const string FX_CREDIT_ACCOUNT_ID = '00000000-0000-0000-0000-000000000002';
+    private const string HOLD_REASON_TRANSFER = 'transfer';
 
     public function __construct(
         private AccountRepositoryInterface $accounts,
@@ -60,7 +61,7 @@ final readonly class TransferFundsHandler
         }
 
         $existing = $this->idempotencyStore->get($command->idempotencyKey);
-        if ($existing instanceof \App\Application\Transfer\TransferFundsResult) {
+        if ($existing instanceof TransferFundsResult) {
             return $existing;
         }
 
@@ -96,7 +97,7 @@ final readonly class TransferFundsHandler
             $debitAmount,
             HoldStatus::Active,
             $now,
-            'transfer',
+            self::HOLD_REASON_TRANSFER,
         );
         $this->em->persist($hold);
 
@@ -155,6 +156,12 @@ final readonly class TransferFundsHandler
             $transaction->setStatus(TransactionStatus::Completed);
             $this->em->flush();
         } catch (\Throwable $e) {
+            $this->logger->error('Transfer failed', [
+                'idempotency_key' => $command->idempotencyKey,
+                'from' => $fromKey,
+                'to' => $toKey,
+                'exception' => $e->getMessage(),
+            ]);
             if ($this->em->isOpen()) {
                 $hold->setStatus(HoldStatus::Released);
                 $transaction->setStatus(TransactionStatus::Failed);

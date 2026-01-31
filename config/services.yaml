@@ -59,3 +59,8 @@ services:
     App\Infrastructure\Http\EventSubscriber\JsonExceptionSubscriber:
         arguments:
             $environment: '%kernel.environment%'
+
+    App\Infrastructure\Http\Controller\HealthController:
+        arguments:
+            $connection: '@doctrine.dbal.default_connection'
+            $cache: '@cache.app'

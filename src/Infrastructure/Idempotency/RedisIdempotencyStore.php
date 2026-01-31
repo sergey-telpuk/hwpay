@@ -37,7 +37,7 @@ final readonly class RedisIdempotencyStore implements IdempotencyStoreInterface
         }
 
         $fromDb = $this->transactions->findOneByExternalId($idempotencyKey);
-        if ($fromDb instanceof \App\Application\Transfer\TransferFundsResult) {
+        if ($fromDb instanceof TransferFundsResult) {
             $this->set($idempotencyKey, $fromDb);
         }
 

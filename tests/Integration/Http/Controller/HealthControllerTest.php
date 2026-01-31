@@ -28,7 +28,7 @@ final class HealthControllerTest extends WebTestCase
     }
 
     #[Test]
-    public function healthReturnsOk(): void
+    public function healthReturnsOkWithDatabaseAndCacheChecks(): void
     {
         $client = self::createClient();
         $client->request('GET', '/health');
@@ -40,5 +40,9 @@ final class HealthControllerTest extends WebTestCase
         $data = json_decode($content, true);
         $this->assertIsArray($data);
         $this->assertSame('ok', $data['status']);
+        $this->assertArrayHasKey('checks', $data);
+        $this->assertIsArray($data['checks']);
+        $this->assertTrue($data['checks']['database']);
+        $this->assertTrue($data['checks']['cache']);
     }
 }

@@ -99,9 +99,10 @@ All API errors (including 5xx) are returned as JSON for `/api/*` and when `Accep
 
 | Method | URL           | Description   |
 |--------|---------------|---------------|
-| GET    | `/health`     | Liveness check |
+| GET    | `/health`     | Liveness check (DB + cache) |
 
-**Response (200):** `{"status":"ok"}`
+**Response (200):** `{"status":"ok","checks":{"database":true,"cache":true}}`  
+**Response (503):** when DB or cache is unreachable — `{"status":"degraded","checks":{"database":false,"cache":false}}` (or one false).
 
 ### Transfer funds
 
@@ -113,8 +114,8 @@ All API errors (including 5xx) are returned as JSON for `/api/*` and when `Accep
 
 | Field            | Type   | Required | Description |
 |------------------|--------|----------|-------------|
-| `from_account_id`| string | yes     | Source account UUID |
-| `to_account_id` | string | yes     | Target account UUID |
+| `from_account_id`| string | yes     | Source account UUID (valid UUID format required) |
+| `to_account_id` | string | yes     | Target account UUID (valid UUID format required) |
 | `amount_minor`   | number | yes     | Amount in smallest unit (e.g. cents) |
 | `idempotency_key`| string | yes     | Unique key per logical transfer (duplicates return same result) |
 
@@ -136,18 +137,19 @@ Example:
   "transfer_id": "uuid",
   "from_account_id": "uuid",
   "to_account_id": "uuid",
-  "amount_minor": 1000
+  "amount_minor": 1000,
+  "currency": "USD"
 }
 ```
 
-**Error responses:**
+**Error responses:** All include `code` and `error` (validation also has `errors`).
 
-| Status | Meaning |
-|--------|---------|
-| 400 | Invalid JSON, empty body, same from/to account, or bad request (e.g. missing FX rate) |
-| 404 | Account not found (from or to) |
-| 422 | Validation errors (`errors` object) or insufficient balance (`error` string) |
-| 500 | Server error (body is JSON with `error` and optional `detail` in dev) |
+| Status | Code | Meaning |
+|--------|------|---------|
+| 400 | `INVALID_JSON`, `INVALID_PAYLOAD`, `INVALID_ARGUMENT` | Invalid JSON, extra/missing fields, invalid UUID, same from/to, or bad request (e.g. missing FX rate) |
+| 404 | `ACCOUNT_NOT_FOUND` | Account not found (from or to) |
+| 422 | `VALIDATION_FAILED`, `INSUFFICIENT_BALANCE` | Validation errors (`errors` object) or insufficient balance (`error` string) |
+| 500 | `INTERNAL_ERROR` | Server error (body has `code`, `error`, and optional `detail` in dev) |
 
 ---
 
@@ -271,6 +273,8 @@ Exchange rates are configured in `config/services.yaml` under `parameters.exchan
 ---
 
 ## Possible improvements
+
+See **`docs/IMPROVEMENTS.md`** for a detailed analysis (security, API, domain, testing, observability, quick wins).
 
 - **Rate limiting** and **authentication** (e.g. API key or JWT) on `/api/transfer`
 - **Pagination and filters** for “list transfers” or “list ledger entries”

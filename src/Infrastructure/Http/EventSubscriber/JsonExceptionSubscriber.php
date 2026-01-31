@@ -43,6 +43,7 @@ final readonly class JsonExceptionSubscriber implements EventSubscriberInterface
             : Response::HTTP_INTERNAL_SERVER_ERROR;
 
         $payload = [
+            'code' => $statusCode >= 500 ? 'INTERNAL_ERROR' : 'ERROR',
             'error' => $throwable->getMessage(),
         ];
 

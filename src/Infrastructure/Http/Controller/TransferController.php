@@ -39,12 +39,15 @@ final class TransferController
     {
         $payload = $this->parseBody($request);
         if (null === $payload) {
-            return new JsonResponse(['error' => 'Invalid JSON'], Response::HTTP_BAD_REQUEST);
+            return $this->errorResponse('INVALID_JSON', 'Invalid JSON', Response::HTTP_BAD_REQUEST);
         }
 
         $errors = $this->validatePayload($payload);
         if ([] !== $errors) {
-            return new JsonResponse(['errors' => $errors], Response::HTTP_UNPROCESSABLE_ENTITY);
+            return new JsonResponse(
+                ['code' => 'VALIDATION_FAILED', 'errors' => $errors],
+                Response::HTTP_UNPROCESSABLE_ENTITY,
+            );
         }
 
         $idempotencyKey = isset($payload['idempotency_key']) && is_string($payload['idempotency_key'])
@@ -54,8 +57,9 @@ final class TransferController
         $toId = $payload['to_account_id'] ?? '';
         $amountMinor = $payload['amount_minor'] ?? 0;
         if (!is_string($fromId) || !is_string($toId) || !is_numeric($amountMinor)) {
-            return new JsonResponse(['error' => 'Invalid payload'], Response::HTTP_BAD_REQUEST);
+            return $this->errorResponse('INVALID_PAYLOAD', 'Invalid payload', Response::HTTP_BAD_REQUEST);
         }
+
         try {
             $command = new TransferFundsCommand(
                 fromAccountId: new AccountId($fromId),
@@ -65,34 +69,18 @@ final class TransferController
             );
             /** @var TransferFundsResult $result */
             $result = $this->handle($command);
-        } catch (HandlerFailedException $e) {
-            $previous = $e->getPrevious();
-            if ($previous instanceof AccountNotFoundException) {
-                return new JsonResponse(['error' => $previous->getMessage()], Response::HTTP_NOT_FOUND);
-            }
-            if ($previous instanceof InsufficientBalanceException) {
-                return new JsonResponse(['error' => $previous->getMessage()], Response::HTTP_UNPROCESSABLE_ENTITY);
-            }
-            if ($previous instanceof InvalidArgumentException) {
-                return new JsonResponse(['error' => $previous->getMessage()], Response::HTTP_BAD_REQUEST);
-            }
-            throw $e;
-        } catch (AccountNotFoundException $e) {
-            return new JsonResponse(['error' => $e->getMessage()], Response::HTTP_NOT_FOUND);
-        } catch (InsufficientBalanceException $e) {
-            return new JsonResponse(['error' => $e->getMessage()], Response::HTTP_UNPROCESSABLE_ENTITY);
-        } catch (InvalidArgumentException $e) {
-            return new JsonResponse(['error' => $e->getMessage()], Response::HTTP_BAD_REQUEST);
+        } catch (\Throwable $e) {
+            $previous = $e instanceof HandlerFailedException ? $e->getPrevious() : $e;
+            return $this->mapExceptionToResponse($previous ?? $e);
         }
 
-        $body = [
+        return new JsonResponse([
             'transfer_id' => $result->transferId,
             'from_account_id' => $result->fromAccountId,
             'to_account_id' => $result->toAccountId,
             'amount_minor' => (int) $result->amount->getAmount(),
-        ];
-
-        return new JsonResponse($body, Response::HTTP_OK);
+            'currency' => $result->amount->getCurrency()->getCode(),
+        ], Response::HTTP_OK);
     }
 
     /** @return array<string, mixed>|null */
@@ -122,16 +110,28 @@ final class TransferController
      */
     private function validatePayload(array $payload): array
     {
-        $constraints = new Assert\Collection([
-            'from_account_id' => [new Assert\NotBlank(), new Assert\Type('string'), new Assert\Length(min: 1, max: 36)],
-            'to_account_id' => [new Assert\NotBlank(), new Assert\Type('string'), new Assert\Length(min: 1, max: 36)],
-            'amount_minor' => [new Assert\NotBlank(), new Assert\Type('numeric'), new Assert\Positive()],
-            'idempotency_key' => [
-                new Assert\NotBlank(),
-                new Assert\Type('string'),
-                new Assert\Length(min: 1, max: 128),
+        $constraints = new Assert\Collection(
+            [
+                'from_account_id' => [
+                    new Assert\NotBlank(),
+                    new Assert\Type('string'),
+                    new Assert\Length(min: 1, max: 36),
+                ],
+                'to_account_id' => [
+                    new Assert\NotBlank(),
+                    new Assert\Type('string'),
+                    new Assert\Length(min: 1, max: 36),
+                ],
+                'amount_minor' => [new Assert\NotBlank(), new Assert\Type('numeric'), new Assert\Positive()],
+                'idempotency_key' => [
+                    new Assert\NotBlank(),
+                    new Assert\Type('string'),
+                    new Assert\Length(min: 1, max: 128),
+                ],
             ],
-        ]);
+            allowExtraFields: false,
+            allowMissingFields: false,
+        );
         $violations = $this->validator->validate($payload, $constraints);
         $errors = [];
         foreach ($violations as $v) {
@@ -139,5 +139,34 @@ final class TransferController
         }
 
         return $errors;
+    }
+
+    /** @return JsonResponse */
+    private function errorResponse(string $code, string $message, int $status): Response
+    {
+        return new JsonResponse(['code' => $code, 'error' => $message], $status);
+    }
+
+    /** @return JsonResponse */
+    private function mapExceptionToResponse(\Throwable $e): Response
+    {
+        if ($e instanceof AccountNotFoundException) {
+            return $this->errorResponse('ACCOUNT_NOT_FOUND', $e->getMessage(), Response::HTTP_NOT_FOUND);
+        }
+        if ($e instanceof InsufficientBalanceException) {
+            return $this->errorResponse(
+                'INSUFFICIENT_BALANCE',
+                $e->getMessage(),
+                Response::HTTP_UNPROCESSABLE_ENTITY,
+            );
+        }
+        if ($e instanceof InvalidArgumentException) {
+            return $this->errorResponse('INVALID_ARGUMENT', $e->getMessage(), Response::HTTP_BAD_REQUEST);
+        }
+
+        $toThrow = $e instanceof HandlerFailedException && $e->getPrevious() instanceof \Throwable
+            ? $e->getPrevious()
+            : $e;
+        throw $toThrow;
     }
 }

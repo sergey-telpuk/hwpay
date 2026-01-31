@@ -150,6 +150,7 @@ final class TransferControllerTest extends TransactionalWebTestCase
         );
         self::assertResponseStatusCodeSame(Response::HTTP_BAD_REQUEST);
         $data = $this->decodeJson($client->getResponse()->getContent());
+        $this->assertSame('INVALID_JSON', $data['code']);
         $this->assertArrayHasKey('error', $data);
         $this->assertSame('Invalid JSON', $data['error']);
     }
@@ -169,8 +170,61 @@ final class TransferControllerTest extends TransactionalWebTestCase
         );
         self::assertResponseStatusCodeSame(Response::HTTP_BAD_REQUEST);
         $data = $this->decodeJson($client->getResponse()->getContent());
+        $this->assertArrayHasKey('code', $data);
+        $this->assertSame('INVALID_JSON', $data['code']);
         $this->assertArrayHasKey('error', $data);
         $this->assertSame('Invalid JSON', $data['error']);
+    }
+
+    /** Extra fields in payload → 422 */
+    #[Test]
+    public function transferExtraFieldsReturns422(): void
+    {
+        $client = self::createClient();
+        $client->request(
+            Request::METHOD_POST,
+            '/api/transfer',
+            [],
+            [],
+            ['CONTENT_TYPE' => 'application/json'],
+            $this->encodeJson([
+                'from_account_id' => self::ACC_FROM,
+                'to_account_id' => self::ACC_TO,
+                'amount_minor' => 100,
+                'idempotency_key' => 'idem-extra',
+                'foo' => 'bar',
+            ]),
+        );
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        $data = $this->decodeJson($client->getResponse()->getContent());
+        $this->assertArrayHasKey('code', $data);
+        $this->assertSame('VALIDATION_FAILED', $data['code']);
+        $this->assertArrayHasKey('errors', $data);
+    }
+
+    /** Invalid UUID format → 400 */
+    #[Test]
+    public function transferInvalidUuidReturns400(): void
+    {
+        $client = self::createClient();
+        $client->request(
+            Request::METHOD_POST,
+            '/api/transfer',
+            [],
+            [],
+            ['CONTENT_TYPE' => 'application/json'],
+            $this->encodeJson([
+                'from_account_id' => 'not-a-valid-uuid',
+                'to_account_id' => self::ACC_TO,
+                'amount_minor' => 100,
+                'idempotency_key' => 'idem-invalid-uuid',
+            ]),
+        );
+        self::assertResponseStatusCodeSame(Response::HTTP_BAD_REQUEST);
+        $data = $this->decodeJson($client->getResponse()->getContent());
+        $this->assertArrayHasKey('code', $data);
+        $this->assertSame('INVALID_ARGUMENT', $data['code']);
+        $this->assertArrayHasKey('error', $data);
     }
 
     /** from_account_id === to_account_id → 400 */
@@ -317,6 +371,8 @@ final class TransferControllerTest extends TransactionalWebTestCase
         $this->assertSame(self::ACC_FROM, $data['from_account_id']);
         $this->assertSame(self::ACC_TO, $data['to_account_id']);
         $this->assertSame(3_000, $data['amount_minor']);
+        $this->assertArrayHasKey('currency', $data);
+        $this->assertSame('USD', $data['currency']);
 
         $em = $this->getEntityManager($client);
         $em->clear();
