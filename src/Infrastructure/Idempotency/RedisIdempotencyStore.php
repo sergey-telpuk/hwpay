@@ -11,6 +11,7 @@ use Money\Currency;
 use Money\Money;
 use Symfony\Component\Cache\Adapter\AdapterInterface;
 
+/** Idempotency: Redis (cache.app) first, then DB via TransactionRepository; TTL 24h. */
 final readonly class RedisIdempotencyStore implements IdempotencyStoreInterface
 {
     private const string CACHE_KEY_PREFIX = 'transfer_idempotency_';
@@ -57,6 +58,9 @@ final readonly class RedisIdempotencyStore implements IdempotencyStoreInterface
         $this->cache->save($item);
     }
 
+    /**
+     * @param array{transfer_id?: string, from_account_id?: string, to_account_id?: string, amount_minor?: int, currency?: string} $cached
+     */
     private function deserialize(array $cached): TransferFundsResult
     {
         $amount = new Money(

@@ -23,7 +23,6 @@
         "symfony/uid": "^8.0",
         "symfony/validator": "^8.0",
         "symfony/yaml": "^8.0",
-        "temporal/sdk": "^2.16",
         "yceruto/money-bundle": "^1.5"
     },
     "require-dev": {

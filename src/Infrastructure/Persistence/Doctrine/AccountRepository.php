@@ -15,6 +15,7 @@ use Money\Currency;
 use Money\Money;
 use Symfony\Component\Uid\Uuid;
 
+/** Loads account with available balance (ledger − active holds); supports pessimistic lock. */
 final readonly class AccountRepository implements AccountRepositoryInterface
 {
     public function __construct(
@@ -24,6 +25,9 @@ final readonly class AccountRepository implements AccountRepositoryInterface
     ) {
     }
 
+    /**
+     * @throws AccountNotFoundException When account does not exist.
+     */
     public function get(AccountId $id): Account
     {
         $entity = $this->em->find(AccountEntity::class, Uuid::fromString($id->toString()));
@@ -34,6 +38,9 @@ final readonly class AccountRepository implements AccountRepositoryInterface
         return $this->toAccount($entity);
     }
 
+    /**
+     * @throws AccountNotFoundException When account does not exist.
+     */
     public function lockForUpdate(AccountId $id): Account
     {
         $qb = $this->em->createQueryBuilder();

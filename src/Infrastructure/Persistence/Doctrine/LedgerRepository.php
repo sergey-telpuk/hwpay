@@ -7,9 +7,11 @@ namespace App\Infrastructure\Persistence\Doctrine;
 use App\Application\Transfer\LedgerRepositoryInterface;
 use App\Domain\Transfer\LedgerSide;
 use Doctrine\ORM\EntityManagerInterface;
+use InvalidArgumentException;
 use Money\Currency;
 use Money\Money;
 
+/** Sums ledger entries (credits minus debits) per account and currency. */
 final readonly class LedgerRepository implements LedgerRepositoryInterface
 {
     public function __construct(
@@ -20,7 +22,7 @@ final readonly class LedgerRepository implements LedgerRepositoryInterface
     public function getBalanceForAccount(string $accountId, string $currency): Money
     {
         if ($currency === '') {
-            throw new \InvalidArgumentException('Currency cannot be empty');
+            throw new InvalidArgumentException('Currency cannot be empty');
         }
         $curr = new Currency($currency);
         $conn = $this->em->getConnection();

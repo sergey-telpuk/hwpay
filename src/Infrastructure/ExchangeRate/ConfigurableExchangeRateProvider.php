@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Infrastructure\ExchangeRate;
 
 use App\Application\Transfer\ExchangeRateProviderInterface;
+use InvalidArgumentException;
 use Money\Converter;
 use Money\Currency;
 use Money\Currencies;
@@ -12,6 +13,7 @@ use Money\Exchange\FixedExchange;
 use Money\Exception\UnresolvableCurrencyPairException;
 use Money\Money;
 
+/** Exchange rates from config (parameters.exchange_rates); throws on missing pair. */
 final readonly class ConfigurableExchangeRateProvider implements ExchangeRateProviderInterface
 {
     private Converter $converter;
@@ -53,7 +55,7 @@ final readonly class ConfigurableExchangeRateProvider implements ExchangeRatePro
 
             return $pair->getConversionRatio();
         } catch (UnresolvableCurrencyPairException $e) {
-            throw new \InvalidArgumentException($e->getMessage(), 0, $e);
+            throw new InvalidArgumentException($e->getMessage(), 0, $e);
         }
     }
 
@@ -61,7 +63,7 @@ final readonly class ConfigurableExchangeRateProvider implements ExchangeRatePro
     private function ensureNonEmptyCurrencyCode(string $code): string
     {
         if ($code === '') {
-            throw new \InvalidArgumentException('Currency code cannot be empty');
+            throw new InvalidArgumentException('Currency code cannot be empty');
         }
 
         return $code;
@@ -72,7 +74,7 @@ final readonly class ConfigurableExchangeRateProvider implements ExchangeRatePro
         try {
             return $this->converter->convert($amount, $targetCurrency, Money::ROUND_HALF_UP);
         } catch (UnresolvableCurrencyPairException $e) {
-            throw new \InvalidArgumentException($e->getMessage(), 0, $e);
+            throw new InvalidArgumentException($e->getMessage(), 0, $e);
         }
     }
 }

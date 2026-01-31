@@ -9,6 +9,7 @@ use App\Application\Transfer\TransferFundsResult;
 use App\Domain\Account\AccountId;
 use App\Domain\Account\AccountNotFoundException;
 use App\Domain\Account\InsufficientBalanceException;
+use InvalidArgumentException;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -20,6 +21,7 @@ use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Validator\Constraints as Assert;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 
+/** POST /api/transfer: validates payload, dispatches TransferFundsCommand, returns JSON or error. */
 #[AsController]
 final class TransferController
 {
@@ -71,7 +73,7 @@ final class TransferController
             if ($previous instanceof InsufficientBalanceException) {
                 return new JsonResponse(['error' => $previous->getMessage()], Response::HTTP_UNPROCESSABLE_ENTITY);
             }
-            if ($previous instanceof \InvalidArgumentException) {
+            if ($previous instanceof InvalidArgumentException) {
                 return new JsonResponse(['error' => $previous->getMessage()], Response::HTTP_BAD_REQUEST);
             }
             throw $e;
@@ -79,7 +81,7 @@ final class TransferController
             return new JsonResponse(['error' => $e->getMessage()], Response::HTTP_NOT_FOUND);
         } catch (InsufficientBalanceException $e) {
             return new JsonResponse(['error' => $e->getMessage()], Response::HTTP_UNPROCESSABLE_ENTITY);
-        } catch (\InvalidArgumentException $e) {
+        } catch (InvalidArgumentException $e) {
             return new JsonResponse(['error' => $e->getMessage()], Response::HTTP_BAD_REQUEST);
         }
 

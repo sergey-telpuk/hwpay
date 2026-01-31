@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Persistence\Doctrine\Entity;
 
+use DateTimeImmutable;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Uid\Uuid;
 
+/** Doctrine entity: account (owner, currency, type, status). Balance is derived from ledger minus holds. */
 #[ORM\Entity]
 #[ORM\Table(name: 'accounts')]
 #[ORM\Index(name: 'accounts_owner_idx', columns: ['owner_type', 'owner_id'])]
@@ -28,7 +30,7 @@ final class AccountEntity
         #[ORM\Column(type: 'string', length: 20)]
         private string $status,
         #[ORM\Column(name: 'created_at', type: 'datetime_immutable')]
-        private \DateTimeImmutable $createdAt,
+        private DateTimeImmutable $createdAt,
     ) {
     }
 
@@ -62,7 +64,7 @@ final class AccountEntity
         return $this->status;
     }
 
-    public function getCreatedAt(): \DateTimeImmutable
+    public function getCreatedAt(): DateTimeImmutable
     {
         return $this->createdAt;
     }

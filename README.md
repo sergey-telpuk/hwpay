@@ -5,6 +5,12 @@
 
 A secure API for transferring funds between accounts. PHP 8.5, Symfony 8, MySQL, Redis, Docker Compose.
 
+### Submission (task requirements)
+
+- **Install & run:** see [How to install and run](#how-to-install-and-run) below.
+- **Time spent:** ~8 hours
+- **AI tools and prompts used:** Cursor, ChatGPT
+
 ---
 
 ## How to install and run
@@ -28,10 +34,6 @@ docker compose run --rm app php bin/console doctrine:migrations:migrate --no-int
 docker compose run --rm -e APP_ENV=test app php vendor/bin/phpunit
 ```
 
-**Time spent:** *(fill in approximate time, e.g. ~4 hours)*
-
-**AI tools and prompts used:** *(e.g. Cursor/Copilot for refactors, tests, docs; list main prompts if you want)*
-
 ---
 
 ## Stack
@@ -40,8 +42,6 @@ docker compose run --rm -e APP_ENV=test app php vendor/bin/phpunit
 - **RoadRunner** — application server (HTTP)
 - **MySQL** — app database
 - **Redis** — idempotency and caching for high load
-- **PostgreSQL** — Temporal persistence
-- **Temporal** — workflows
 - **PHPUnit** — tests
 
 ## Fund Transfer API
@@ -126,6 +126,7 @@ Transfer funds from one account to another.
 - **Rate limiting** and **auth** (e.g. API key or JWT) on `/api/transfer`.
 - **Pagination and filters** for a future “list transfers” or “list ledger entries” endpoint.
 - **Saga/outbox** if we introduce async steps (e.g. notify external system) to keep consistency.
+- **Async manipulation and interaction between microservices:** for event-driven or multi-service architecture, [Temporal](https://temporal.io/) (or similar) would be useful — workflows, retries, compensation.
 - **Scheduled job** to set expired holds to status Expired (we already exclude them from available balance by `expires_at` in the query).
 - **Metrics** (e.g. Prometheus) for transfer count, latency, errors.
 
@@ -133,7 +134,7 @@ Transfer funds from one account to another.
 
 - `src/Domain/` — entities, value objects, domain logic
 - `src/Application/` — use cases, ports (interfaces)
-- `src/Infrastructure/` — HTTP controllers, Doctrine, Temporal workers
+- `src/Infrastructure/` — HTTP controllers, Doctrine
 
 ## Run with Docker
 
@@ -142,14 +143,12 @@ docker compose up -d
 ```
 
 - App (Symfony via RoadRunner): http://localhost:8080
-- Temporal UI: http://localhost:8088
 - MySQL: localhost:3306 (user `app`, password `app`, databases `app` and `app_test` for tests)
 - Redis: localhost:6379
-- Temporal gRPC: localhost:7233
 
 ## Local development (without Docker)
 
-1. Install PHP 8.4+ (with bcmath extension for moneyphp/money), Composer, MySQL, [RoadRunner binary](https://roadrunner.dev/docs/intro-install), Temporal server (e.g. [temporalite](https://docs.temporal.io/development-guide/run-your-app-locally)).
+1. Install PHP 8.4+ (with bcmath extension for moneyphp/money), Composer, MySQL, [RoadRunner binary](https://roadrunner.dev/docs/intro-install).
 
 2. Install dependencies and RoadRunner binary:
 
@@ -158,18 +157,12 @@ composer install
 ./vendor/bin/rr get --location bin/
 ```
 
-3. Copy `.env` and set `DATABASE_URL`, `TEMPORAL_ADDRESS`.
+3. Copy `.env` and set `DATABASE_URL`, `REDIS_URL`.
 
 4. Run RoadRunner:
 
 ```bash
 bin/rr serve
-```
-
-5. Run Temporal worker (in another terminal, if using workflows):
-
-```bash
-php bin/temporal-worker.php
 ```
 
 ## Tests
@@ -207,21 +200,3 @@ Run all checks: `composer qa` (PHPStan + PHP_CodeSniffer).
 - **PHPStan** — static analysis: `composer phpstan`. Config: `phpstan.neon`. Run `php bin/console cache:clear` first if Symfony container is missing.
 - **PHP_CodeSniffer** — PSR-12: `composer phpcs`; auto-fix: `composer phpcbf`. Config: `phpcs.xml.dist`
 - **Rector** — refactoring & upgrades: `composer rector:dry` (preview), `composer rector` (apply). Config: `rector.php`
-
-## Temporal
-
-- Workflow example: `App\Infrastructure\Temporal\HelloWorkflow`
-- Activity: `App\Infrastructure\Temporal\HelloActivity`
-- Worker script: `bin/temporal-worker.php` (run via RoadRunner temporal plugin or standalone when Temporal server is available).
-
-Start a workflow from PHP:
-
-```php
-use Temporal\Client\WorkflowClient;
-use Temporal\Client\GRPC\ServiceClient;
-use App\Infrastructure\Temporal\HelloWorkflow;
-
-$client = WorkflowClient::create(ServiceClient::create('127.0.0.1:7233'));
-$run = $client->start(HelloWorkflow::class, 'World');
-echo $run->getResult(); // "Hello, World!"
-```

@@ -6,11 +6,13 @@ namespace App\Infrastructure\Persistence\Doctrine\Entity;
 
 use App\Domain\Transfer\TransactionStatus;
 use App\Domain\Transfer\TransactionType;
+use DateTimeImmutable;
 use Doctrine\ORM\Mapping as ORM;
 use Doctrine\ORM\Mapping\Embedded;
 use Money\Money;
 use Symfony\Component\Uid\Uuid;
 
+/** Doctrine entity: transfer transaction (external_id = idempotency key, from/to account, amount, status). */
 #[ORM\Entity]
 #[ORM\Table(name: 'transactions')]
 #[ORM\Index(name: 'transactions_created_idx', columns: ['created_at'])]
@@ -36,7 +38,7 @@ final class TransactionEntity
         #[Embedded]
         private Money $amount,
         #[ORM\Column(name: 'created_at', type: 'datetime_immutable')]
-        private \DateTimeImmutable $createdAt,
+        private DateTimeImmutable $createdAt,
         /** @var array<string, mixed> */
         #[ORM\Column(type: 'json')]
         private array $meta = [],
@@ -89,7 +91,7 @@ final class TransactionEntity
         return $this->meta;
     }
 
-    public function getCreatedAt(): \DateTimeImmutable
+    public function getCreatedAt(): DateTimeImmutable
     {
         return $this->createdAt;
     }

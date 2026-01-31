@@ -6,9 +6,11 @@ namespace App\Infrastructure\Persistence\Doctrine;
 
 use App\Domain\Transfer\HoldStatus;
 use Doctrine\ORM\EntityManagerInterface;
+use InvalidArgumentException;
 use Money\Currency;
 use Money\Money;
 
+/** Sums active (non-expired) holds per account and currency for available balance. */
 final readonly class HoldRepository
 {
     public function __construct(
@@ -19,7 +21,7 @@ final readonly class HoldRepository
     public function getActiveHoldsSum(string $accountId, string $currency): Money
     {
         if ($currency === '') {
-            throw new \InvalidArgumentException('Currency cannot be empty');
+            throw new InvalidArgumentException('Currency cannot be empty');
         }
         $curr = new Currency($currency);
         $conn = $this->em->getConnection();

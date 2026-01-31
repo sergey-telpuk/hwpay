@@ -6,6 +6,9 @@ namespace App\Domain\Account;
 
 use Money\Money;
 
+/**
+ * Thrown when a debit would exceed the account's available balance.
+ */
 final class InsufficientBalanceException extends \DomainException
 {
     private function __construct(string $message)

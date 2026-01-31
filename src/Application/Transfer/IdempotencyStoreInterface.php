@@ -6,6 +6,7 @@ namespace App\Application\Transfer;
 
 /**
  * Idempotency: get returns cached result (Redis first, then DB); set stores result after successful transfer.
+ * Used to avoid double-spend on duplicate requests with the same idempotency key.
  */
 interface IdempotencyStoreInterface
 {

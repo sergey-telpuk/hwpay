@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Helper;
 
 use Doctrine\ORM\EntityManagerInterface;
+use RuntimeException;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
@@ -39,7 +40,7 @@ abstract class TransactionalWebTestCase extends WebTestCase
                 '--no-interaction' => true,
             ]), $output);
             if ($exitCode !== 0) {
-                throw new \RuntimeException(
+                throw new RuntimeException(
                     'Doctrine migrations failed (exit ' . $exitCode . ").\n" . $output->fetch(),
                     $exitCode
                 );

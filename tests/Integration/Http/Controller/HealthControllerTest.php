@@ -23,8 +23,8 @@ final class HealthControllerTest extends WebTestCase
         self::assertNotFalse($content);
         $data = json_decode($content, true);
         self::assertIsArray($data);
-        $this->assertSame('hwpay', $data['app']);
-        $this->assertSame('Hello', $data['message']);
+        self::assertSame('hwpay', $data['app']);
+        self::assertSame('Hello', $data['message']);
     }
 
     #[Test]
@@ -39,6 +39,6 @@ final class HealthControllerTest extends WebTestCase
         self::assertNotFalse($content);
         $data = json_decode($content, true);
         self::assertIsArray($data);
-        $this->assertSame('ok', $data['status']);
+        self::assertSame('ok', $data['status']);
     }
 }

@@ -7,6 +7,7 @@ namespace App\Application\Transfer;
 use Money\Currency;
 use Money\Money;
 
+/** Provides exchange rate and conversion for cross-currency transfers. */
 interface ExchangeRateProviderInterface
 {
     /**

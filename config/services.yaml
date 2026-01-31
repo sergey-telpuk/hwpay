@@ -19,7 +19,6 @@ services:
             - '../src/Kernel.php'
             - '../src/Domain/**'
             - '../src/Application/**'
-            - '../src/Infrastructure/Temporal/**'
 
     App\Domain\:
         resource: '../src/Domain/'
@@ -31,8 +30,6 @@ services:
 
     App\Infrastructure\:
         resource: '../src/Infrastructure/'
-        exclude: '../src/Infrastructure/Temporal/**'
-
     App\Application\Transfer\AccountRepositoryInterface: '@App\Infrastructure\Persistence\Doctrine\AccountRepository'
     App\Application\Transfer\LedgerRepositoryInterface: '@App\Infrastructure\Persistence\Doctrine\LedgerRepository'
     App\Application\Transfer\TransactionRepositoryInterface: '@App\Infrastructure\Persistence\Doctrine\TransactionRepository'

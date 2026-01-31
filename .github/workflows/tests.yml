@@ -46,6 +46,18 @@ jobs:
       - name: Install dependencies
         run: composer install --no-progress --no-interaction --prefer-dist
 
+      - name: PHPStan
+        env:
+          APP_ENV: test
+          APP_SECRET: test-secret
+          DATABASE_URL: "mysql://app:app@127.0.0.1:3306/app_test?serverVersion=8.4"
+        run: |
+          php bin/console cache:clear --env=test --no-warmup
+          composer phpstan
+
+      - name: PHP_CodeSniffer
+        run: composer phpcs
+
       - name: Run migrations
         env:
           APP_ENV: test

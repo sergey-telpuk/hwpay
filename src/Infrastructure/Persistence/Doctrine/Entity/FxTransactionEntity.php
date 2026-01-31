@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Persistence\Doctrine\Entity;
 
+use DateTimeImmutable;
 use Doctrine\ORM\Mapping as ORM;
 use Doctrine\ORM\Mapping\Embedded;
 use Money\Money;
 use Symfony\Component\Uid\Uuid;
 
+/** Doctrine entity: FX conversion record (rate, spread, base/quote amounts) for a cross-currency transfer. */
 #[ORM\Entity]
 #[ORM\Table(name: 'fx_transactions')]
 #[ORM\UniqueConstraint(name: 'fx_transactions_transaction_id_unique', columns: ['transaction_id'])]
@@ -29,7 +31,7 @@ final class FxTransactionEntity
         #[ORM\Column(type: 'decimal', precision: 18, scale: 10)]
         private string $spread,
         #[ORM\Column(name: 'created_at', type: 'datetime_immutable')]
-        private \DateTimeImmutable $createdAt,
+        private DateTimeImmutable $createdAt,
     ) {
     }
 
@@ -63,7 +65,7 @@ final class FxTransactionEntity
         return $this->spread;
     }
 
-    public function getCreatedAt(): \DateTimeImmutable
+    public function getCreatedAt(): DateTimeImmutable
     {
         return $this->createdAt;
     }

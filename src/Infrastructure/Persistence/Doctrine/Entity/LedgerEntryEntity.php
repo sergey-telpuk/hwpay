@@ -5,11 +5,13 @@ declare(strict_types=1);
 namespace App\Infrastructure\Persistence\Doctrine\Entity;
 
 use App\Domain\Transfer\LedgerSide;
+use DateTimeImmutable;
 use Doctrine\ORM\Mapping as ORM;
 use Doctrine\ORM\Mapping\Embedded;
 use Money\Money;
 use Symfony\Component\Uid\Uuid;
 
+/** Doctrine entity: single ledger entry (debit or credit) for an account in a transaction. */
 #[ORM\Entity]
 #[ORM\Table(name: 'ledger_entries')]
 #[ORM\Index(name: 'ledger_tx_idx', columns: ['transaction_id'])]
@@ -30,7 +32,7 @@ final class LedgerEntryEntity
         #[Embedded]
         private Money $amount,
         #[ORM\Column(name: 'created_at', type: 'datetime_immutable')]
-        private \DateTimeImmutable $createdAt,
+        private DateTimeImmutable $createdAt,
     ) {
     }
 
@@ -59,7 +61,7 @@ final class LedgerEntryEntity
         return $this->amount;
     }
 
-    public function getCreatedAt(): \DateTimeImmutable
+    public function getCreatedAt(): DateTimeImmutable
     {
         return $this->createdAt;
     }

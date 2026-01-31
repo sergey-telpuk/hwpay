@@ -13,7 +13,9 @@ use App\Infrastructure\Persistence\Doctrine\Entity\FxTransactionEntity;
 use App\Infrastructure\Persistence\Doctrine\Entity\HoldEntity;
 use App\Infrastructure\Persistence\Doctrine\Entity\LedgerEntryEntity;
 use App\Infrastructure\Persistence\Doctrine\Entity\TransactionEntity;
+use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
+use InvalidArgumentException;
 use Money\Currency;
 use Money\Money;
 use Psr\Log\LoggerInterface;
@@ -29,6 +31,9 @@ use Symfony\Component\Uid\Uuid;
  *    set hold→Captured, transaction→Completed, flush.
  * 5. On error: if EM open → set hold→Released, transaction→Failed, detach partial ledger/fx,
  *    persist transaction, flush; then rethrow.
+ *
+ * @throws InvalidArgumentException When from and to account are the same.
+ * @throws InsufficientBalanceException When source available balance is insufficient.
  */
 #[AsMessageHandler(bus: 'command_bus')]
 final readonly class TransferFundsHandler
@@ -49,7 +54,7 @@ final readonly class TransferFundsHandler
     public function __invoke(TransferFundsCommand $command): TransferFundsResult
     {
         if ($command->fromAccountId->toString() === $command->toAccountId->toString()) {
-            throw new \InvalidArgumentException('fromAccountId must differ from toAccountId');
+            throw new InvalidArgumentException('fromAccountId must differ from toAccountId');
         }
 
         $existing = $this->idempotencyStore->get($command->idempotencyKey);
@@ -82,7 +87,7 @@ final readonly class TransferFundsHandler
             );
         }
 
-        $now = new \DateTimeImmutable();
+        $now = new DateTimeImmutable();
         $hold = new HoldEntity(
             Uuid::v4(),
             $fromAccountUuid,
@@ -170,7 +175,7 @@ final readonly class TransferFundsHandler
         Uuid $toAccountUuid,
         Money $debitAmount,
         Money $creditAmount,
-        \DateTimeImmutable $now,
+        DateTimeImmutable $now,
     ): void {
         $this->em->persist(new LedgerEntryEntity(Uuid::v4(), $transactionId, $fromAccountUuid, LedgerSide::Debit, $debitAmount, $now));
         $this->em->persist(new LedgerEntryEntity(Uuid::v4(), $transactionId, $toAccountUuid, LedgerSide::Credit, $creditAmount, $now));
@@ -184,7 +189,7 @@ final readonly class TransferFundsHandler
         Money $creditAmount,
         string $rateStr,
         string $spreadStr,
-        \DateTimeImmutable $now,
+        DateTimeImmutable $now,
     ): void {
         $fxDebitUuid = Uuid::fromString(self::FX_DEBIT_ACCOUNT_ID);
         $fxCreditUuid = Uuid::fromString(self::FX_CREDIT_ACCOUNT_ID);

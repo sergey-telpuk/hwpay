@@ -9,6 +9,7 @@ use App\Application\Transfer\TransferFundsResult;
 use App\Infrastructure\Persistence\Doctrine\Entity\TransactionEntity;
 use Doctrine\ORM\EntityManagerInterface;
 
+/** Finds transactions by external_id (idempotency key) and maps to TransferFundsResult. */
 final readonly class TransactionRepository implements TransactionRepositoryInterface
 {
     public function __construct(

@@ -6,6 +6,7 @@ namespace App\Application\Transfer;
 
 use Money\Money;
 
+/** Result of a successful fund transfer (idempotency or new). */
 final readonly class TransferFundsResult
 {
     public function __construct(
