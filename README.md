@@ -176,7 +176,7 @@ src/
 └── Infrastructure/ # HTTP, Doctrine, Redis, console
 ```
 
-See [Architecture](#architecture) and `docs/FX_LEDGER.md` for design details.
+See [Architecture](#architecture) for design details.
 
 ---
 
@@ -250,7 +250,7 @@ Test database `app_test` is created on first `docker compose up` (see `docker/my
 - **DDD:** Domain, Application (ports), Infrastructure (adapters).
 - **Double-entry ledger:** Balances from `ledger_entries`; no stored balance column.
 - **Holds:** Each transfer creates a hold (Active → Captured or Released). Available balance = ledger balance − active holds.
-- **FX:** Cross-currency transfers use technical FX accounts and 4 ledger entries; see `docs/FX_LEDGER.md`.
+- **FX:** Cross-currency transfers use technical FX accounts and 4 ledger entries.
 - **Idempotency:** `idempotency_key` stored in DB (`transactions.external_id`) and Redis (24h TTL).
 - **Concurrency:** Pessimistic lock (`FOR UPDATE`) on both accounts in deterministic order (by ID) to avoid deadlocks.
 - **Error handling:** Failed transfers persist transaction as Failed and hold as Released when possible; API returns JSON errors for `/api/*`.
@@ -273,8 +273,6 @@ Exchange rates are configured in `config/services.yaml` under `parameters.exchan
 ---
 
 ## Possible improvements
-
-See **`docs/IMPROVEMENTS.md`** for a detailed analysis (security, API, domain, testing, observability, quick wins).
 
 - **Rate limiting** and **authentication** (e.g. API key or JWT) on `/api/transfer`
 - **Pagination and filters** for “list transfers” or “list ledger entries”
