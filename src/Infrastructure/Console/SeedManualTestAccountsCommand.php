@@ -40,8 +40,7 @@ final class SeedManualTestAccountsCommand extends Command
 
     public function __construct(
         private readonly EntityManagerInterface $em,
-    )
-    {
+    ) {
         parent::__construct();
     }
 
@@ -83,11 +82,13 @@ final class SeedManualTestAccountsCommand extends Command
             }
         }
 
-        foreach ([
-                     self::ACCOUNT_A_ID => '10000',
-                     self::ACCOUNT_B_ID => '5000',
-                     self::ACCOUNT_USD_ID => '20000'
-                 ] as $accountId => $amountMinor) {
+        foreach (
+            [
+                self::ACCOUNT_A_ID => '10000',
+                self::ACCOUNT_B_ID => '5000',
+                self::ACCOUNT_USD_ID => '20000',
+            ] as $accountId => $amountMinor
+        ) {
             $amount = new Money($amountMinor, new Currency('USD'));
             $txId = Uuid::v5($namespace, 'seed-tx-' . $accountId);
             if ($this->em->find(TransactionEntity::class, $txId) !== null) {
