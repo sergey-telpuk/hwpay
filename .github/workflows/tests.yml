@@ -58,6 +58,9 @@ jobs:
       - name: PHP_CodeSniffer
         run: composer phpcs
 
+      - name: Rector (dry-run)
+        run: composer rector:dry
+
       - name: Run migrations
         env:
           APP_ENV: test
