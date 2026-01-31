@@ -11,12 +11,11 @@ use Doctrine\ORM\Mapping\Embedded;
 use Money\Money;
 use Symfony\Component\Uid\Uuid;
 
-/** Doctrine entity: hold (reservation) on an account; status Active/Captured/Released/Expired. */
+/** Doctrine entity: hold (reservation) on an account; status Active/Captured/Released. */
 #[ORM\Entity]
 #[ORM\Table(name: 'holds')]
 #[ORM\Index(name: 'holds_account_idx', columns: ['account_id'])]
 #[ORM\Index(name: 'holds_account_status_idx', columns: ['account_id', 'status'])]
-#[ORM\Index(name: 'holds_expires_idx', columns: ['expires_at'])]
 final class HoldEntity
 {
     public function __construct(
@@ -33,8 +32,6 @@ final class HoldEntity
         private DateTimeImmutable $createdAt,
         #[ORM\Column(type: 'text', nullable: true)]
         private ?string $reason = null,
-        #[ORM\Column(name: 'expires_at', type: 'datetime_immutable', nullable: true)]
-        private ?DateTimeImmutable $expiresAt = null,
     ) {
     }
 
@@ -66,11 +63,6 @@ final class HoldEntity
     public function getReason(): ?string
     {
         return $this->reason;
-    }
-
-    public function getExpiresAt(): ?DateTimeImmutable
-    {
-        return $this->expiresAt;
     }
 
     public function getCreatedAt(): DateTimeImmutable
