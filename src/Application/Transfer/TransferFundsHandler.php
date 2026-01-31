@@ -43,6 +43,8 @@ final readonly class TransferFundsHandler
     private const string FX_DEBIT_ACCOUNT_ID = '00000000-0000-0000-0000-000000000001';
     private const string FX_CREDIT_ACCOUNT_ID = '00000000-0000-0000-0000-000000000002';
     private const string HOLD_REASON_TRANSFER = 'transfer';
+    /** TTL for new holds; overdue active holds can be marked Expired by a scheduled job. */
+    private const string HOLD_TTL = '+24 hours';
 
     public function __construct(
         private AccountRepositoryInterface $accounts,
@@ -98,6 +100,7 @@ final readonly class TransferFundsHandler
             HoldStatus::Active,
             $now,
             self::HOLD_REASON_TRANSFER,
+            $now->modify(self::HOLD_TTL),
         );
         $this->em->persist($hold);
 

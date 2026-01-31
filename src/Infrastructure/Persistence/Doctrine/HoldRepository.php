@@ -38,4 +38,19 @@ final readonly class HoldRepository
 
         return new Money($sumMinor, $curr);
     }
+
+    /** Marks active holds with expires_at in the past as Expired. Returns number of rows updated. */
+    public function markExpiredOverdue(): int
+    {
+        $conn = $this->em->getConnection();
+        $result = $conn->executeStatement(
+            "UPDATE holds SET status = :expired WHERE status = :active AND expires_at IS NOT NULL AND expires_at < CURRENT_TIMESTAMP",
+            [
+                'expired' => HoldStatus::Expired->value,
+                'active' => HoldStatus::Active->value,
+            ],
+        );
+
+        return is_int($result) ? $result : 0;
+    }
 }
