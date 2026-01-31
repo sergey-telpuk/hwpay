@@ -32,15 +32,16 @@ use Symfony\Component\Uid\Uuid;
 final class SeedManualTestAccountsCommand extends Command
 {
     private const SEED_ACCOUNT_ID = '00000000-0000-4000-8000-000000000001';
-    private const ACCOUNT_A_ID    = '00000000-0000-0000-0000-000000000010';
-    private const ACCOUNT_B_ID    = '00000000-0000-0000-0000-000000000011';
-    private const ACCOUNT_USD_ID  = '00000000-0000-0000-0000-000000000020';
-    private const ACCOUNT_EUR_ID  = '00000000-0000-0000-0000-000000000021';
-    private const UUID_NAMESPACE   = '6ba7b810-9dad-11d1-80b4-00c04fd430c8';
+    private const ACCOUNT_A_ID = '00000000-0000-0000-0000-000000000010';
+    private const ACCOUNT_B_ID = '00000000-0000-0000-0000-000000000011';
+    private const ACCOUNT_USD_ID = '00000000-0000-0000-0000-000000000020';
+    private const ACCOUNT_EUR_ID = '00000000-0000-0000-0000-000000000021';
+    private const UUID_NAMESPACE = '6ba7b810-9dad-11d1-80b4-00c04fd430c8';
 
     public function __construct(
         private readonly EntityManagerInterface $em,
-    ) {
+    )
+    {
         parent::__construct();
     }
 
@@ -82,7 +83,11 @@ final class SeedManualTestAccountsCommand extends Command
             }
         }
 
-        foreach ([self::ACCOUNT_A_ID => '10000', self::ACCOUNT_B_ID => '5000', self::ACCOUNT_USD_ID => '20000'] as $accountId => $amountMinor) {
+        foreach ([
+                     self::ACCOUNT_A_ID => '10000',
+                     self::ACCOUNT_B_ID => '5000',
+                     self::ACCOUNT_USD_ID => '20000'
+                 ] as $accountId => $amountMinor) {
             $amount = new Money($amountMinor, new Currency('USD'));
             $txId = Uuid::v5($namespace, 'seed-tx-' . $accountId);
             if ($this->em->find(TransactionEntity::class, $txId) !== null) {
