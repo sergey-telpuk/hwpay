@@ -23,6 +23,7 @@ final class Version20260131120000 extends AbstractMigration
         $this->addSql('ALTER TABLE holds DROP COLUMN expires_at');
     }
 
+    #[\Override]
     public function down(Schema $schema): void
     {
         $this->addSql('ALTER TABLE holds ADD expires_at DATETIME DEFAULT NULL');
