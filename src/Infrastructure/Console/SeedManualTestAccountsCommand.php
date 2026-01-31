@@ -31,12 +31,12 @@ use Symfony\Component\Uid\Uuid;
 )]
 final class SeedManualTestAccountsCommand extends Command
 {
-    private const SEED_ACCOUNT_ID = '00000000-0000-4000-8000-000000000001';
-    private const ACCOUNT_A_ID = '00000000-0000-0000-0000-000000000010';
-    private const ACCOUNT_B_ID = '00000000-0000-0000-0000-000000000011';
-    private const ACCOUNT_USD_ID = '00000000-0000-0000-0000-000000000020';
-    private const ACCOUNT_EUR_ID = '00000000-0000-0000-0000-000000000021';
-    private const UUID_NAMESPACE = '6ba7b810-9dad-11d1-80b4-00c04fd430c8';
+    private const string SEED_ACCOUNT_ID = '00000000-0000-4000-8000-000000000001';
+    private const string ACCOUNT_A_ID = '00000000-0000-0000-0000-000000000010';
+    private const string ACCOUNT_B_ID = '00000000-0000-0000-0000-000000000011';
+    private const string ACCOUNT_USD_ID = '00000000-0000-0000-0000-000000000020';
+    private const string ACCOUNT_EUR_ID = '00000000-0000-0000-0000-000000000021';
+    private const string UUID_NAMESPACE = '6ba7b810-9dad-11d1-80b4-00c04fd430c8';
 
     public function __construct(
         private readonly EntityManagerInterface $em,
@@ -68,7 +68,7 @@ final class SeedManualTestAccountsCommand extends Command
             self::ACCOUNT_USD_ID => ['USD', '20000'],
             self::ACCOUNT_EUR_ID => ['EUR', '0'],
         ];
-        foreach ($accountsToCreate as $accountId => [$currency, $amountMinor]) {
+        foreach ($accountsToCreate as $accountId => [$currency]) {
             if ($this->em->find(AccountEntity::class, Uuid::fromString($accountId)) === null) {
                 $this->em->persist(new AccountEntity(
                     Uuid::fromString($accountId),

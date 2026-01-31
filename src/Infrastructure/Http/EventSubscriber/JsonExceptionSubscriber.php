@@ -16,10 +16,10 @@ use Symfony\Component\HttpKernel\KernelEvents;
  * Returns JSON error responses for API requests and when client accepts JSON.
  * Ensures all errors (including 500) are returned as JSON for /api/* or Accept: application/json.
  */
-final class JsonExceptionSubscriber implements EventSubscriberInterface
+final readonly class JsonExceptionSubscriber implements EventSubscriberInterface
 {
     public function __construct(
-        private readonly string $environment,
+        private string $environment,
     ) {
     }
 
