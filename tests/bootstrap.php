@@ -16,7 +16,8 @@ if (file_exists(dirname(__DIR__).'/config/bootstrap.php')) {
     }
 }
 
-$argv = $_SERVER['argv'] ?? [];
+/** @var list<string> $argv */
+$argv = is_array($_SERVER['argv'] ?? null) ? $_SERVER['argv'] : [];
 $testsuiteKey = array_search('--testsuite', $argv, true);
 $isUnitOnly = $testsuiteKey !== false && ($argv[$testsuiteKey + 1] ?? '') === 'Unit';
 

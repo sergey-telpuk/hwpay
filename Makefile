@@ -1,4 +1,4 @@
-.PHONY: help install test test-unit coverage phpstan phpcs phpcbf rector rector-dry qa check migrate cache-clear cache-clear-test
+.PHONY: help install test test-unit test-integ coverage phpstan phpcs phpcbf rector rector-dry qa check migrate cache-clear cache-clear-test
 
 .DEFAULT_GOAL := help
 
@@ -12,6 +12,7 @@ help:
 	@echo "  make install       - composer install (in container)"
 	@echo "  make test         - run PHPUnit (in container)"
 	@echo "  make test-unit    - run PHPUnit Unit tests only (in container)"
+	@echo "  make test-integ   - run PHPUnit Integration tests only (in container, needs DB)"
 	@echo "  make coverage     - run PHPUnit with coverage report (in container)"
 	@echo "  make phpstan      - run PHPStan (in container)"
 	@echo "  make phpcs        - run PHP_CodeSniffer (in container)"
@@ -32,6 +33,9 @@ test:
 
 test-unit:
 	$(APP_TEST) sh -c "php bin/console cache:clear --env=test --no-warmup && php vendor/bin/phpunit --testsuite Unit"
+
+test-integ:
+	$(APP_TEST) sh -c "php bin/console cache:clear --env=test --no-warmup && php vendor/bin/phpunit --testsuite Integration"
 
 coverage:
 	$(APP_TEST) sh -c "php bin/console cache:clear --env=test --no-warmup && php vendor/bin/phpunit"

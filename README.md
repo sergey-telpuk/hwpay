@@ -1,11 +1,10 @@
 # HWPay — Fund Transfer API
 
-[![Tests](https://github.com/sergey-telpuk/hwpay/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/sergey-telpuk/hwpay/actions/workflows/tests.yml)
+[![CI](https://github.com/sergey-telpuk/hwpay/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/sergey-telpuk/hwpay/actions/workflows/tests.yml)
 [![codecov](https://codecov.io/gh/sergey-telpuk/hwpay/graph/badge.svg?branch=main)](https://codecov.io/gh/sergey-telpuk/hwpay?branch=main)
-[![PHPStan](https://img.shields.io/github/actions/workflow/status/sergey-telpuk/hwpay/tests.yml?branch=main&label=PHPStan)](https://github.com/sergey-telpuk/hwpay/actions/workflows/tests.yml)
-[![PHPCS](https://img.shields.io/github/actions/workflow/status/sergey-telpuk/hwpay/tests.yml?branch=main&label=PHPCS)](https://github.com/sergey-telpuk/hwpay/actions/workflows/tests.yml)
-[![Rector](https://img.shields.io/github/actions/workflow/status/sergey-telpuk/hwpay/tests.yml?branch=main&label=Rector)](https://github.com/sergey-telpuk/hwpay/actions/workflows/tests.yml)
 [![PHP 8.5](https://img.shields.io/badge/PHP-8.5-777BB4?logo=php&logoColor=white)](https://www.php.net/)
+[![Symfony 8](https://img.shields.io/badge/Symfony-8-000000?logo=symfony)](https://symfony.com/)
+[![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
 
 A secure REST API for transferring funds between accounts. Built with PHP 8.5, Symfony 8, MySQL, Redis, and Docker Compose.
 
