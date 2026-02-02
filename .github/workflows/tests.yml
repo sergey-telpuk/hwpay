@@ -1,4 +1,4 @@
-name: Tests
+name: CI
 
 on:
   push:
@@ -6,10 +6,23 @@ on:
   pull_request:
     branches: [main]
 
-jobs:
-  test:
-    runs-on: ubuntu-latest
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
+permissions:
+  contents: read
+
+env:
+  PHP_VERSION: "8.5"
+  APP_ENV: test
+  APP_SECRET: test-secret
+  DATABASE_URL: "mysql://app:app@127.0.0.1:3306/app_test?serverVersion=8.4"
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
     services:
       mysql:
         image: mysql:8.4
@@ -20,15 +33,59 @@ jobs:
           MYSQL_PASSWORD: app
         ports:
           - 3306:3306
-        options: --health-cmd="mysqladmin ping -h localhost -u root -proot" --health-interval=10s --health-timeout=5s --health-retries=3
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -u root -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: "8.5"
+          php-version: ${{ env.PHP_VERSION }}
+          extensions: intl, pdo_mysql, bcmath
+          coverage: none
+
+      - name: Get Composer cache directory
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
+
+      - name: Cache Composer dependencies
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: ${{ runner.os }}-php-${{ env.PHP_VERSION }}-composer-${{ hashFiles('**/composer.lock') }}
+          restore-keys: ${{ runner.os }}-php-${{ env.PHP_VERSION }}-composer-
+
+      - name: Install dependencies
+        run: composer install --no-progress --no-interaction --prefer-dist
+
+      - name: PHPStan
+        run: |
+          php bin/console cache:clear --env=test --no-warmup
+          composer phpstan
+
+      - name: PHP_CodeSniffer
+        run: composer phpcs
+
+      - name: Rector (dry-run)
+        run: composer rector:dry
+
+  unit:
+    name: Unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ env.PHP_VERSION }}
           extensions: intl, pdo_mysql, bcmath
           coverage: pcov
 
@@ -40,54 +97,82 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ steps.composer-cache.outputs.dir }}
-          key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
-          restore-keys: ${{ runner.os }}-composer-
+          key: ${{ runner.os }}-php-${{ env.PHP_VERSION }}-composer-${{ hashFiles('**/composer.lock') }}
+          restore-keys: ${{ runner.os }}-php-${{ env.PHP_VERSION }}-composer-
 
       - name: Install dependencies
         run: composer install --no-progress --no-interaction --prefer-dist
 
-      - name: PHPStan
+      - name: Run Unit tests
+        run: bin/phpunit --testsuite Unit --coverage-text --coverage-clover var/coverage/unit-clover.xml
+
+      - name: Upload Unit coverage to Codecov
+        if: success()
+        uses: codecov/codecov-action@v4
+        with:
+          files: var/coverage/unit-clover.xml
+          fail_ci_if_error: false
+
+  integration:
+    name: Integration tests
+    runs-on: ubuntu-latest
+    needs: [lint, unit]
+    services:
+      mysql:
+        image: mysql:8.4
         env:
-          APP_ENV: test
-          APP_SECRET: test-secret
-          DATABASE_URL: "mysql://app:app@127.0.0.1:3306/app_test?serverVersion=8.4"
-        run: |
-          php bin/console cache:clear --env=test --no-warmup
-          composer phpstan
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: app_test
+          MYSQL_USER: app
+          MYSQL_PASSWORD: app
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -u root -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
 
-      - name: PHP_CodeSniffer
-        run: composer phpcs
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - name: Rector (dry-run)
-        run: composer rector:dry
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+          extensions: intl, pdo_mysql, bcmath
+          coverage: pcov
 
-      - name: Unit tests
-        env:
-          APP_ENV: test
-          APP_SECRET: test-secret
-        run: bin/phpunit --testsuite Unit
+      - name: Get Composer cache directory
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
+
+      - name: Cache Composer dependencies
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: ${{ runner.os }}-php-${{ env.PHP_VERSION }}-composer-${{ hashFiles('**/composer.lock') }}
+          restore-keys: ${{ runner.os }}-php-${{ env.PHP_VERSION }}-composer-
+
+      - name: Install dependencies
+        run: composer install --no-progress --no-interaction --prefer-dist
 
       - name: Run migrations
-        env:
-          APP_ENV: test
-          APP_SECRET: test-secret
-          DATABASE_URL: "mysql://app:app@127.0.0.1:3306/app_test?serverVersion=8.4"
         run: php bin/console doctrine:migrations:migrate --no-interaction
 
-      - name: Integration tests and coverage
-        env:
-          APP_ENV: test
-          APP_SECRET: test-secret
-          DATABASE_URL: "mysql://app:app@127.0.0.1:3306/app_test?serverVersion=8.4"
+      - name: Run all tests with coverage
         run: bin/phpunit --coverage-text --coverage-clover var/coverage/clover.xml
 
       - name: Upload coverage to Codecov
+        if: success()
         uses: codecov/codecov-action@v4
         with:
           files: var/coverage/clover.xml
           fail_ci_if_error: false
 
-      - name: Upload coverage report
+      - name: Upload coverage report artifact
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: coverage-report
