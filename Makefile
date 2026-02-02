@@ -1,4 +1,4 @@
-.PHONY: help install test test-unit test-integ coverage phpstan phpcs phpcbf rector rector-dry qa check migrate cache-clear cache-clear-test
+.PHONY: help install test test-unit test-integ coverage coverage-unit coverage-integ phpstan phpcs phpcbf rector rector-dry qa check migrate cache-clear cache-clear-test
 
 .DEFAULT_GOAL := help
 
@@ -13,7 +13,9 @@ help:
 	@echo "  make test         - run PHPUnit (in container)"
 	@echo "  make test-unit    - run PHPUnit Unit tests only (in container)"
 	@echo "  make test-integ   - run PHPUnit Integration tests only (in container, needs DB)"
-	@echo "  make coverage     - run PHPUnit with coverage report (in container)"
+	@echo "  make coverage     - run all tests with coverage report (Unit + Integration)"
+	@echo "  make coverage-unit   - Unit tests with coverage (no DB)"
+	@echo "  make coverage-integ  - Integration tests with coverage (needs DB)"
 	@echo "  make phpstan      - run PHPStan (in container)"
 	@echo "  make phpcs        - run PHP_CodeSniffer (in container)"
 	@echo "  make phpcbf       - fix code style (in container)"
@@ -41,6 +43,16 @@ coverage:
 	$(APP_TEST) sh -c "php bin/console cache:clear --env=test --no-warmup && php vendor/bin/phpunit"
 	@echo ""
 	@echo "Coverage report: var/coverage/index.html (open in browser when using Docker volume)"
+
+coverage-unit:
+	$(APP_TEST) sh -c "php bin/console cache:clear --env=test --no-warmup && php vendor/bin/phpunit --testsuite Unit"
+	@echo ""
+	@echo "Unit coverage: var/coverage/index.html"
+
+coverage-integ:
+	$(APP_TEST) sh -c "php bin/console cache:clear --env=test --no-warmup && php vendor/bin/phpunit --testsuite Integration"
+	@echo ""
+	@echo "Integration coverage: var/coverage/index.html"
 
 phpstan:
 	$(APP_TEST) sh -c "php bin/console cache:clear --env=test --no-warmup && composer phpstan"

@@ -161,14 +161,14 @@ jobs:
       - name: Run migrations
         run: php bin/console doctrine:migrations:migrate --no-interaction
 
-      - name: Run all tests with coverage
-        run: bin/phpunit --coverage-text --coverage-clover var/coverage/clover.xml
+      - name: Run Integration tests with coverage
+        run: bin/phpunit --testsuite Integration --coverage-text --coverage-clover var/coverage/integration-clover.xml
 
-      - name: Upload coverage to Codecov
+      - name: Upload Integration coverage to Codecov
         if: success()
         uses: codecov/codecov-action@v4
         with:
-          files: var/coverage/clover.xml
+          files: var/coverage/integration-clover.xml
           fail_ci_if_error: false
 
       - name: Upload coverage report artifact

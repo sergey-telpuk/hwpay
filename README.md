@@ -209,8 +209,12 @@ See [Architecture](#architecture) for design details.
 | Command       | Description |
 |---------------|-------------|
 | `make install`| Composer install |
-| `make test`   | PHPUnit |
-| `make coverage` | PHPUnit with coverage report (HTML in `var/coverage/`) |
+| `make test`   | PHPUnit (all) |
+| `make test-unit` | PHPUnit Unit suite only |
+| `make test-integ` | PHPUnit Integration suite only (needs DB) |
+| `make coverage` | All tests with coverage (HTML in `var/coverage/`) |
+| `make coverage-unit` | Unit tests with coverage |
+| `make coverage-integ` | Integration tests with coverage |
 | `make qa`     | PHPStan + PHPCS + Rector dry-run + tests |
 | `make migrate`| Run Doctrine migrations |
 | `make phpstan`| PHPStan only |
@@ -307,7 +311,10 @@ Authentication and rate limiting are not implemented; see [Possible improvements
 
 ## Test coverage
 
-Integration tests (16 total) cover:
+Coverage is collected from **Unit** and **Integration** tests.
+
+- **Unit** — Domain, Application, Infrastructure (mocked): `Account`, `AccountId`, `InsufficientBalanceException`, `ConfigurableExchangeRateProvider`, `HealthController`, `TransferController`. Run: `make test-unit` or `make coverage-unit` (no DB).
+- **Integration** — HTTP, DB, Redis: health, transfer (same/FX currency), validation, business rules, persistence. Run: `make test-integ` or `make coverage-integ` (needs DB).
 
 | Area | Tests |
 |------|--------|
@@ -318,7 +325,7 @@ Integration tests (16 total) cover:
 | **FX** | Missing rate (e.g. GBP→JPY) → 400; same currency with different account currencies → success |
 | **Persistence** | Ledger entry count (2 same-currency, 4 FX), hold status Captured after success, FX transaction row |
 
-Run: `make test` or `make coverage` (HTML report in `var/coverage/index.html`); or `make qa` for full QA (same as CI).
+Run: `make test` (all tests), `make coverage` (all tests + HTML in `var/coverage/index.html`), or `make qa` for full QA (same as CI).
 
 ---
 
