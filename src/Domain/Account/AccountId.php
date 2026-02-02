@@ -16,6 +16,7 @@ final readonly class AccountId
         if ('' === $value) {
             throw new InvalidArgumentException('Account ID cannot be empty');
         }
+
         if (1 !== preg_match(self::UUID_PATTERN, $value)) {
             throw new InvalidArgumentException('Account ID must be a valid UUID');
         }

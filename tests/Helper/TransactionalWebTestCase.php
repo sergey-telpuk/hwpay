@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Helper;
 
+use PHPUnit\Framework\Assert;
 use Doctrine\ORM\EntityManagerInterface;
 use RuntimeException;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
@@ -31,7 +32,7 @@ abstract class TransactionalWebTestCase extends WebTestCase
         $client = parent::createClient($options, $server);
         if (!self::$migrationsRun) {
             $kernel = static::$kernel;
-            \PHPUnit\Framework\Assert::assertInstanceOf(KernelInterface::class, $kernel);
+            Assert::assertInstanceOf(KernelInterface::class, $kernel);
             $application = new Application($kernel);
             $application->setAutoExit(false);
             $output = new BufferedOutput();
@@ -45,11 +46,13 @@ abstract class TransactionalWebTestCase extends WebTestCase
                     $exitCode
                 );
             }
+
             self::$migrationsRun = true;
         }
+
         if (!self::$em instanceof EntityManagerInterface) {
             $em = $client->getContainer()->get(EntityManagerInterface::class);
-            \PHPUnit\Framework\Assert::assertInstanceOf(EntityManagerInterface::class, $em);
+            Assert::assertInstanceOf(EntityManagerInterface::class, $em);
             self::$em = $em;
             self::$em->beginTransaction();
         }
@@ -65,9 +68,11 @@ abstract class TransactionalWebTestCase extends WebTestCase
                 self::$em->rollback();
             } catch (\Throwable) {
             }
+
             self::$em->clear();
             self::$em = null;
         }
+
         parent::tearDown();
     }
 }

@@ -38,9 +38,11 @@ final class Account
         if ($amount->isZero() || $amount->isNegative()) {
             throw new InvalidArgumentException('Debit amount must be positive');
         }
+
         if ($this->balance->lessThan($amount)) {
             throw InsufficientBalanceException::forAccount($this->id, $this->balance, $amount);
         }
+
         $this->balance = $this->balance->subtract($amount);
     }
 
@@ -50,6 +52,7 @@ final class Account
         if ($amount->isZero() || $amount->isNegative()) {
             throw new InvalidArgumentException('Credit amount must be positive');
         }
+
         $this->balance = $this->balance->add($amount);
     }
 }

@@ -24,6 +24,7 @@ passthru(
 if ($clearResult !== 0) {
     throw new RuntimeException('Test cache clear failed.');
 }
+
 passthru(
     "APP_ENV=test php " . escapeshellarg($console) . " doctrine:migrations:migrate --no-interaction",
     $result,

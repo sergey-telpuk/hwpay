@@ -4,13 +4,13 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Console;
 
+use Carbon\CarbonImmutable;
 use App\Infrastructure\Persistence\Doctrine\Entity\AccountEntity;
 use App\Infrastructure\Persistence\Doctrine\Entity\LedgerEntryEntity;
 use App\Infrastructure\Persistence\Doctrine\Entity\TransactionEntity;
 use App\Domain\Transfer\LedgerSide;
 use App\Domain\Transfer\TransactionStatus;
 use App\Domain\Transfer\TransactionType;
-use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
 use Money\Currency;
 use Money\Money;
@@ -32,10 +32,15 @@ use Symfony\Component\Uid\Uuid;
 final class SeedManualTestAccountsCommand extends Command
 {
     private const string SEED_ACCOUNT_ID = '00000000-0000-4000-8000-000000000001';
+
     private const string ACCOUNT_A_ID = '00000000-0000-0000-0000-000000000010';
+
     private const string ACCOUNT_B_ID = '00000000-0000-0000-0000-000000000011';
+
     private const string ACCOUNT_USD_ID = '00000000-0000-0000-0000-000000000020';
+
     private const string ACCOUNT_EUR_ID = '00000000-0000-0000-0000-000000000021';
+
     private const string UUID_NAMESPACE = '6ba7b810-9dad-11d1-80b4-00c04fd430c8';
 
     public function __construct(
@@ -47,7 +52,7 @@ final class SeedManualTestAccountsCommand extends Command
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $io = new SymfonyStyle($input, $output);
-        $now = new DateTimeImmutable();
+        $now = CarbonImmutable::now();
         $namespace = Uuid::fromString(self::UUID_NAMESPACE);
 
         if ($this->em->find(AccountEntity::class, Uuid::fromString(self::SEED_ACCOUNT_ID)) === null) {
@@ -94,6 +99,7 @@ final class SeedManualTestAccountsCommand extends Command
             if ($this->em->find(TransactionEntity::class, $txId) !== null) {
                 continue;
             }
+
             $this->em->persist(new TransactionEntity(
                 $txId,
                 'seed-' . $accountId,

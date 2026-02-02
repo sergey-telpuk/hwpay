@@ -62,7 +62,10 @@ final readonly class JsonExceptionSubscriber implements EventSubscriberInterface
             return true;
         }
 
-        return $request->getPreferredFormat() === 'json'
-            || str_contains((string) $request->headers->get('Accept', ''), 'application/json');
+        if ($request->getPreferredFormat() === 'json') {
+            return true;
+        }
+
+        return str_contains((string) $request->headers->get('Accept', ''), 'application/json');
     }
 }

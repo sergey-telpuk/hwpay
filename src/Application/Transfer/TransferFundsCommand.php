@@ -19,6 +19,7 @@ final readonly class TransferFundsCommand
         if ($amountMinor <= 0) {
             throw new InvalidArgumentException('Transfer amount must be positive');
         }
+
         if ('' === $idempotencyKey) {
             throw new InvalidArgumentException('Idempotency key cannot be empty');
         }

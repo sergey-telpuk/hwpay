@@ -24,6 +24,7 @@ final readonly class LedgerRepository implements LedgerRepositoryInterface
         if ($currency === '') {
             throw new InvalidArgumentException('Currency cannot be empty');
         }
+
         $curr = new Currency($currency);
         $conn = $this->em->getConnection();
         $sql = 'SELECT COALESCE(SUM(CASE WHEN side = :credit THEN amount_amount ELSE -amount_amount END), 0) '

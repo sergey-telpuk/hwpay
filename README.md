@@ -39,6 +39,7 @@ A secure REST API for transferring funds between accounts. Built with PHP 8.5, S
 ```bash
 git clone https://github.com/sergey-telpuk/hwpay.git
 cd hwpay
+cp .env.example .env   # optional; defaults work with docker compose
 docker compose up -d
 ```
 
@@ -278,7 +279,6 @@ Exchange rates are configured in `config/services.yaml` under `parameters.exchan
 - **Pagination and filters** for “list transfers” or “list ledger entries”
 - **Saga/outbox** for async steps (e.g. external notifications) with consistency guarantees
 - **Workflow engine** (e.g. [Temporal](https://temporal.io/)) for event-driven or multi-service flows
-- **Scheduled job** to mark expired holds (already excluded from available balance by query)
 - **Metrics** (e.g. Prometheus) for throughput, latency, errors
 
 ---

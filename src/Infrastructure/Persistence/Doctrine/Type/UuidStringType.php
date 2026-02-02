@@ -36,6 +36,7 @@ final class UuidStringType extends Type
         if ($value instanceof Uuid) {
             return $value->toRfc4122();
         }
+
         if (null === $value || '' === $value) {
             return null;
         }

@@ -15,6 +15,7 @@ use Symfony\Component\Cache\Adapter\AdapterInterface;
 final readonly class RedisIdempotencyStore implements IdempotencyStoreInterface
 {
     private const string CACHE_KEY_PREFIX = 'transfer_idempotency_';
+
     private const int TTL_SECONDS = 86400;
 
     public function __construct(
@@ -56,6 +57,7 @@ final readonly class RedisIdempotencyStore implements IdempotencyStoreInterface
             'currency' => $result->amount->getCurrency()->getCode(),
         ]);
         $item->expiresAfter(self::TTL_SECONDS);
+
         $this->cache->save($item);
     }
 

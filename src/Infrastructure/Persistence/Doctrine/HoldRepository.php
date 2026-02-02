@@ -23,6 +23,7 @@ final readonly class HoldRepository
         if ($currency === '') {
             throw new InvalidArgumentException('Currency cannot be empty');
         }
+
         $curr = new Currency($currency);
         $conn = $this->em->getConnection();
         $sql = 'SELECT COALESCE(SUM(amount_amount), 0) FROM holds '

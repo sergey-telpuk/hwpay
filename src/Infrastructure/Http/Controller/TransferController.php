@@ -35,7 +35,7 @@ final class TransferController
     }
 
     #[Route('/api/transfer', name: 'api_transfer', methods: [Request::METHOD_POST])]
-    public function __invoke(Request $request): Response
+    public function __invoke(Request $request): JsonResponse
     {
         $payload = $this->parseBody($request);
         if (null === $payload) {
@@ -69,9 +69,9 @@ final class TransferController
             );
             /** @var TransferFundsResult $result */
             $result = $this->handle($command);
-        } catch (\Throwable $e) {
-            $previous = $e instanceof HandlerFailedException ? $e->getPrevious() : $e;
-            return $this->mapExceptionToResponse($previous ?? $e);
+        } catch (\Throwable $throwable) {
+            $previous = $throwable instanceof HandlerFailedException ? $throwable->getPrevious() : $throwable;
+            return $this->mapExceptionToResponse($previous ?? $throwable);
         }
 
         return new JsonResponse([
@@ -90,15 +90,18 @@ final class TransferController
         if ('' === $content) {
             return null;
         }
+
         $data = json_decode($content, true);
         if (!is_array($data)) {
             return null;
         }
+
         $out = [];
         foreach ($data as $k => $v) {
             if (!\is_string($k)) {
                 return null;
             }
+
             $out[$k] = $v;
         }
 
@@ -141,18 +144,17 @@ final class TransferController
         return $errors;
     }
 
-    /** @return JsonResponse */
-    private function errorResponse(string $code, string $message, int $status): Response
+    private function errorResponse(string $code, string $message, int $status): JsonResponse
     {
         return new JsonResponse(['code' => $code, 'error' => $message], $status);
     }
 
-    /** @return JsonResponse */
-    private function mapExceptionToResponse(\Throwable $e): Response
+    private function mapExceptionToResponse(\Throwable $e): JsonResponse
     {
         if ($e instanceof AccountNotFoundException) {
             return $this->errorResponse('ACCOUNT_NOT_FOUND', $e->getMessage(), Response::HTTP_NOT_FOUND);
         }
+
         if ($e instanceof InsufficientBalanceException) {
             return $this->errorResponse(
                 'INSUFFICIENT_BALANCE',
@@ -160,6 +162,7 @@ final class TransferController
                 Response::HTTP_UNPROCESSABLE_ENTITY,
             );
         }
+
         if ($e instanceof InvalidArgumentException) {
             return $this->errorResponse('INVALID_ARGUMENT', $e->getMessage(), Response::HTTP_BAD_REQUEST);
         }

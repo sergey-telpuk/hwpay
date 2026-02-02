@@ -21,6 +21,7 @@ use Money\Money;
 final class MoneyType extends Type
 {
     private const string NAME = 'money';
+
     private const string SEPARATOR = '|';
 
     public function getSQLDeclaration(array $column, AbstractPlatform $platform): string
@@ -50,6 +51,7 @@ final class MoneyType extends Type
         if ($currencyCode === '') {
             throw InvalidFormat::new($value, self::NAME, 'decimal|currency');
         }
+
         $currency = new Currency($currencyCode);
         $currencies = new ISOCurrencies();
         $subunit = $currencies->subunitFor($currency);
@@ -58,6 +60,7 @@ final class MoneyType extends Type
         if (!is_numeric($decimalTrimmed)) {
             $decimalTrimmed = '0';
         }
+
         /** @var numeric-string $decimalTrimmed */
         $scaled = bcmul($decimalTrimmed, $multiplier, $subunit);
         $minor = bccomp($scaled, '0', $subunit) >= 0 ? bcadd($scaled, '0.5', 0) : bcsub($scaled, '0.5', 0);
@@ -85,9 +88,11 @@ final class MoneyType extends Type
         if ($negative) {
             $minor = substr($minor, 1);
         }
+
         $int = bcdiv($minor, $multiplier, 0);
         $frac = bcmod($minor, $multiplier);
         $frac = str_pad($frac, $subunit, '0', STR_PAD_LEFT);
+
         $decimal = ($negative ? '-' : '') . $int . '.' . $frac;
 
         return $decimal . self::SEPARATOR . $currency->getCode();

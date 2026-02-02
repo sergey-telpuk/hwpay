@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Integration\Http\Controller;
 
+use Carbon\CarbonImmutable;
 use App\Application\Transfer\AccountRepositoryInterface;
 use App\Domain\Account\AccountId;
 use App\Domain\Transfer\HoldStatus;
@@ -17,7 +18,6 @@ use App\Infrastructure\Persistence\Doctrine\Entity\HoldEntity;
 use App\Infrastructure\Persistence\Doctrine\Entity\LedgerEntryEntity;
 use App\Infrastructure\Persistence\Doctrine\Entity\TransactionEntity;
 use App\Tests\Helper\TransactionalWebTestCase;
-use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
 use InvalidArgumentException;
 use Money\Currency;
@@ -35,14 +35,23 @@ use Symfony\Component\Uid\Uuid;
 final class TransferControllerTest extends TransactionalWebTestCase
 {
     private const string UUID_NAMESPACE = '6ba7b810-9dad-11d1-80b4-00c04fd430c8';
+
     private const string ACC_FROM = '11111111-1111-4111-8111-111111111111';
+
     private const string ACC_TO = '22222222-2222-4222-8222-222222222222';
+
     private const string ACC_A = '33333333-3333-4333-8333-333333333333';
+
     private const string ACC_B = '44444444-4444-4444-8444-444444444444';
+
     private const string ACC_LOW = '55555555-5555-4555-8555-555555555555';
+
     private const string ACC_HIGH = '66666666-6666-4666-8666-666666666666';
+
     private const string ACC_USD = '77777777-7777-4777-8777-777777777777';
+
     private const string ACC_EUR = '88888888-8888-4888-8888-888888888888';
+
     private const string SEED_ACCOUNT = '00000000-0000-4000-8000-000000000001';
 
     private function getEntityManager(KernelBrowser $client): EntityManagerInterface
@@ -63,10 +72,10 @@ final class TransferControllerTest extends TransactionalWebTestCase
     }
 
     /** @return array<string, mixed> */
-    private function decodeJson(string|false $content): array
+    private function decodeJson(mixed $content): array
     {
-        $this->assertNotFalse($content);
-        $data = json_decode($content, true);
+        $raw = is_string($content) ? $content : '';
+        $data = json_decode($raw, true);
         $this->assertIsArray($data);
         $out = [];
         foreach ($data as $k => $v) {
@@ -86,7 +95,7 @@ final class TransferControllerTest extends TransactionalWebTestCase
             $currency,
             'wallet',
             'active',
-            new DateTimeImmutable(),
+            CarbonImmutable::now(),
         );
     }
 
@@ -99,12 +108,14 @@ final class TransferControllerTest extends TransactionalWebTestCase
         if ($em->find(AccountEntity::class, Uuid::fromString(self::SEED_ACCOUNT)) === null) {
             $em->persist($this->account(self::SEED_ACCOUNT, $currency));
         }
-        $now = new DateTimeImmutable();
+
+        $now = CarbonImmutable::now();
         $namespace = Uuid::fromString(self::UUID_NAMESPACE);
         $txId = Uuid::v5($namespace, 'seed-tx-' . $accountId);
         if ($currency === '' || !is_numeric($amountMinor)) {
             throw new InvalidArgumentException('Currency and amount must be non-empty and numeric');
         }
+
         $amountMoney = new Money($amountMinor, new Currency($currency));
         $em->persist(new TransactionEntity(
             $txId,
@@ -238,6 +249,7 @@ final class TransferControllerTest extends TransactionalWebTestCase
         $this->seedBalance($em, self::ACC_FROM, '10000', 'USD');
         $em->flush();
         $em->clear();
+
         $client->request(
             Request::METHOD_POST,
             '/api/transfer',
@@ -265,6 +277,7 @@ final class TransferControllerTest extends TransactionalWebTestCase
         $em->persist($this->account(self::ACC_FROM));
         $em->flush();
         $em->clear();
+
         $client->request(
             Request::METHOD_POST,
             '/api/transfer',
@@ -292,6 +305,7 @@ final class TransferControllerTest extends TransactionalWebTestCase
         $em->persist($this->account(self::ACC_TO));
         $em->flush();
         $em->clear();
+
         $client->request(
             Request::METHOD_POST,
             '/api/transfer',
@@ -320,6 +334,7 @@ final class TransferControllerTest extends TransactionalWebTestCase
         $em->persist($this->account(self::ACC_HIGH));
         $em->flush();
         $em->clear();
+
         $client->request(
             Request::METHOD_POST,
             '/api/transfer',
@@ -350,6 +365,7 @@ final class TransferControllerTest extends TransactionalWebTestCase
         $this->seedBalance($em, self::ACC_FROM, '10000', 'USD');
         $em->flush();
         $em->clear();
+
         $client->request(
             Request::METHOD_POST,
             '/api/transfer',
@@ -376,6 +392,7 @@ final class TransferControllerTest extends TransactionalWebTestCase
 
         $em = $this->getEntityManager($client);
         $em->clear();
+
         $transferId = $data['transfer_id'];
         $this->assertIsString($transferId);
         $txId = Uuid::fromString($transferId);
@@ -399,6 +416,7 @@ final class TransferControllerTest extends TransactionalWebTestCase
         $this->seedBalance($em, self::ACC_A, '5000', 'USD');
         $em->flush();
         $em->clear();
+
         $payload = [
             'from_account_id' => self::ACC_A,
             'to_account_id' => self::ACC_B,
@@ -439,6 +457,7 @@ final class TransferControllerTest extends TransactionalWebTestCase
         $this->seedBalance($em, self::ACC_USD, '10000', 'USD');
         $em->flush();
         $em->clear();
+
         $client->request(
             Request::METHOD_POST,
             '/api/transfer',
@@ -469,6 +488,7 @@ final class TransferControllerTest extends TransactionalWebTestCase
 
         $em = $this->getEntityManager($client);
         $em->clear();
+
         $transferId = $data['transfer_id'];
         $this->assertIsString($transferId);
         $txId = Uuid::fromString($transferId);
@@ -499,6 +519,7 @@ final class TransferControllerTest extends TransactionalWebTestCase
         $this->seedBalance($em, self::ACC_USD, '10000', 'GBP');
         $em->flush();
         $em->clear();
+
         $client->request(
             Request::METHOD_POST,
             '/api/transfer',
@@ -529,6 +550,7 @@ final class TransferControllerTest extends TransactionalWebTestCase
         $this->seedBalance($em, self::ACC_USD, '10000', 'USD');
         $em->flush();
         $em->clear();
+
         $client->request(
             Request::METHOD_POST,
             '/api/transfer',

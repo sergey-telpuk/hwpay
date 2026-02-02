@@ -20,7 +20,7 @@ final readonly class HealthController
     }
 
     #[Route('/health', name: 'health', methods: [Request::METHOD_GET])]
-    public function __invoke(): Response
+    public function __invoke(): JsonResponse
     {
         $checks = ['database' => $this->checkDatabase(), 'cache' => $this->checkCache()];
         $ok = $checks['database'] && $checks['cache'];
@@ -56,7 +56,7 @@ final readonly class HealthController
     }
 
     #[Route('/', name: 'home', methods: [Request::METHOD_GET])]
-    public function home(): Response
+    public function home(): JsonResponse
     {
         return new JsonResponse(['app' => 'hwpay', 'message' => 'Hello']);
     }

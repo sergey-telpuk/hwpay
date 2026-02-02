@@ -34,13 +34,23 @@ final readonly class ConfigurableExchangeRateProvider implements ExchangeRatePro
     {
         $list = [];
         foreach ($rates as $base => $quotes) {
-            if ($base === '' || !is_string($base)) {
+            if ($base === '') {
                 continue;
             }
+
+            if (!is_string($base)) {
+                continue;
+            }
+
             foreach ($quotes as $counter => $rate) {
-                if ($counter === '' || !is_string($counter)) {
+                if ($counter === '') {
                     continue;
                 }
+
+                if (!is_string($counter)) {
+                    continue;
+                }
+
                 $rateStr = is_string($rate) ? $rate : (string) $rate;
                 $list[$base][$counter] = is_numeric($rateStr) ? $rateStr : '0';
             }
@@ -54,6 +64,7 @@ final readonly class ConfigurableExchangeRateProvider implements ExchangeRatePro
         if ($sourceCurrencyCode === $targetCurrencyCode) {
             return '1';
         }
+
         $source = $this->ensureNonEmptyCurrencyCode($sourceCurrencyCode);
         $target = $this->ensureNonEmptyCurrencyCode($targetCurrencyCode);
         try {
@@ -61,8 +72,12 @@ final readonly class ConfigurableExchangeRateProvider implements ExchangeRatePro
                 ->quote(new Currency($source), new Currency($target));
 
             return $pair->getConversionRatio();
-        } catch (UnresolvableCurrencyPairException $e) {
-            throw new InvalidArgumentException($e->getMessage(), 0, $e);
+        } catch (UnresolvableCurrencyPairException $unresolvableCurrencyPairException) {
+            throw new InvalidArgumentException(
+                $unresolvableCurrencyPairException->getMessage(),
+                0,
+                $unresolvableCurrencyPairException,
+            );
         }
     }
 
@@ -80,8 +95,12 @@ final readonly class ConfigurableExchangeRateProvider implements ExchangeRatePro
     {
         try {
             return $this->converter->convert($amount, $targetCurrency, Money::ROUND_HALF_UP);
-        } catch (UnresolvableCurrencyPairException $e) {
-            throw new InvalidArgumentException($e->getMessage(), 0, $e);
+        } catch (UnresolvableCurrencyPairException $unresolvableCurrencyPairException) {
+            throw new InvalidArgumentException(
+                $unresolvableCurrencyPairException->getMessage(),
+                0,
+                $unresolvableCurrencyPairException,
+            );
         }
     }
 }

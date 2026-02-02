@@ -11,7 +11,6 @@ use App\Domain\Account\AccountNotFoundException;
 use App\Infrastructure\Persistence\Doctrine\Entity\AccountEntity;
 use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
-use Money\Currency;
 use Money\Money;
 use Symfony\Component\Uid\Uuid;
 
@@ -50,6 +49,7 @@ final readonly class AccountRepository implements AccountRepositoryInterface
             ->setParameter('id', Uuid::fromString($id->toString()));
         $query = $qb->getQuery();
         $query->setLockMode(LockMode::PESSIMISTIC_WRITE);
+
         $entity = $query->getOneOrNullResult();
         if (!$entity instanceof AccountEntity) {
             throw AccountNotFoundException::withId($id);
