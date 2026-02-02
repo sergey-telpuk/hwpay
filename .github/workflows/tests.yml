@@ -185,4 +185,4 @@ jobs:
         with:
           name: coverage-report
           path: var/coverage/
-          retention-days: 7
+          retention-days: 3
