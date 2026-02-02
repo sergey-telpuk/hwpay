@@ -81,6 +81,14 @@ final readonly class ConfigurableExchangeRateProvider implements ExchangeRatePro
         }
     }
 
+    public function getSpread(string $sourceCurrencyCode, string $targetCurrencyCode): string
+    {
+        $this->ensureNonEmptyCurrencyCode($sourceCurrencyCode);
+        $this->ensureNonEmptyCurrencyCode($targetCurrencyCode);
+        // Config has no spread; same currency or any pair returns '0'.
+        return '0';
+    }
+
     /** @return non-empty-string */
     private function ensureNonEmptyCurrencyCode(string $code): string
     {
@@ -93,6 +101,10 @@ final readonly class ConfigurableExchangeRateProvider implements ExchangeRatePro
 
     public function convert(Money $amount, Currency $targetCurrency): Money
     {
+        if ($amount->getCurrency()->getCode() === $targetCurrency->getCode()) {
+            return $amount;
+        }
+
         try {
             return $this->converter->convert($amount, $targetCurrency, Money::ROUND_HALF_UP);
         } catch (UnresolvableCurrencyPairException $unresolvableCurrencyPairException) {

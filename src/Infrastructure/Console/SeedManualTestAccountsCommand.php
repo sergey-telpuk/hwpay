@@ -33,13 +33,13 @@ final class SeedManualTestAccountsCommand extends Command
 {
     private const string SEED_ACCOUNT_ID = '00000000-0000-4000-8000-000000000001';
 
-    private const string ACCOUNT_A_ID = '00000000-0000-0000-0000-000000000010';
+    private const string ACCOUNT_A_ID = '00000000-0000-4000-8000-000000000010';
 
-    private const string ACCOUNT_B_ID = '00000000-0000-0000-0000-000000000011';
+    private const string ACCOUNT_B_ID = '00000000-0000-4000-8000-000000000011';
 
-    private const string ACCOUNT_USD_ID = '00000000-0000-0000-0000-000000000020';
+    private const string ACCOUNT_USD_ID = '00000000-0000-4000-8000-000000000020';
 
-    private const string ACCOUNT_EUR_ID = '00000000-0000-0000-0000-000000000021';
+    private const string ACCOUNT_EUR_ID = '00000000-0000-4000-8000-000000000021';
 
     private const string UUID_NAMESPACE = '6ba7b810-9dad-11d1-80b4-00c04fd430c8';
 

@@ -16,9 +16,9 @@ use Override;
  */
 final class Version20260129155938 extends AbstractMigration
 {
-    private const string FX_DEBIT_ACCOUNT_ID  = '00000000-0000-0000-0000-000000000001';
+    private const string FX_DEBIT_ACCOUNT_ID  = '00000000-0000-4000-8000-000000000001';
 
-    private const string FX_CREDIT_ACCOUNT_ID = '00000000-0000-0000-0000-000000000002';
+    private const string FX_CREDIT_ACCOUNT_ID = '00000000-0000-4000-8000-000000000002';
 
     #[Override]
     public function getDescription(): string

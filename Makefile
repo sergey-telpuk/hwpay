@@ -1,4 +1,4 @@
-.PHONY: help install test phpstan phpcs phpcbf rector rector-dry qa check migrate cache-clear cache-clear-test
+.PHONY: help install test test-unit coverage phpstan phpcs phpcbf rector rector-dry qa check migrate cache-clear cache-clear-test
 
 .DEFAULT_GOAL := help
 
@@ -11,6 +11,8 @@ help:
 	@echo ""
 	@echo "  make install       - composer install (in container)"
 	@echo "  make test         - run PHPUnit (in container)"
+	@echo "  make test-unit    - run PHPUnit Unit tests only (in container)"
+	@echo "  make coverage     - run PHPUnit with coverage report (in container)"
 	@echo "  make phpstan      - run PHPStan (in container)"
 	@echo "  make phpcs        - run PHP_CodeSniffer (in container)"
 	@echo "  make phpcbf       - fix code style (in container)"
@@ -27,6 +29,14 @@ install:
 
 test:
 	$(APP_TEST) sh -c "php bin/console cache:clear --env=test --no-warmup && php vendor/bin/phpunit"
+
+test-unit:
+	$(APP_TEST) sh -c "php bin/console cache:clear --env=test --no-warmup && php vendor/bin/phpunit --testsuite Unit"
+
+coverage:
+	$(APP_TEST) sh -c "php bin/console cache:clear --env=test --no-warmup && php vendor/bin/phpunit"
+	@echo ""
+	@echo "Coverage report: var/coverage/index.html (open in browser when using Docker volume)"
 
 phpstan:
 	$(APP_TEST) sh -c "php bin/console cache:clear --env=test --no-warmup && composer phpstan"

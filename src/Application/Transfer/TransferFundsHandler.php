@@ -40,9 +40,9 @@ use Symfony\Component\Uid\Uuid;
 final readonly class TransferFundsHandler
 {
     /** Technical FX accounts: sold-currency leg (FX_SOLD_POOL) and bought-currency leg (FX_BOUGHT_POOL). */
-    private const string FX_DEBIT_ACCOUNT_ID = '00000000-0000-0000-0000-000000000001';
+    private const string FX_DEBIT_ACCOUNT_ID = '00000000-0000-4000-8000-000000000001';
 
-    private const string FX_CREDIT_ACCOUNT_ID = '00000000-0000-0000-0000-000000000002';
+    private const string FX_CREDIT_ACCOUNT_ID = '00000000-0000-4000-8000-000000000002';
 
     private const string HOLD_REASON_TRANSFER = 'transfer';
 
@@ -117,15 +117,10 @@ final readonly class TransferFundsHandler
         );
 
         try {
-            $creditAmount = $debitAmount;
-            $rateStr = '1';
-            $spreadStr = '0';
+            $rateStr = $this->exchangeRates->getExchangeRate($fromCurrency, $toCurrency);
+            $spreadStr = $this->exchangeRates->getSpread($fromCurrency, $toCurrency);
+            $creditAmount = $this->exchangeRates->convert($debitAmount, new Currency($toCurrency));
             $isFx = $fromCurrency !== $toCurrency;
-
-            if ($isFx) {
-                $rateStr = $this->exchangeRates->getExchangeRate($fromCurrency, $toCurrency);
-                $creditAmount = $this->exchangeRates->convert($debitAmount, new Currency($toCurrency));
-            }
 
             $from->debit($debitAmount);
             $to->credit($creditAmount);

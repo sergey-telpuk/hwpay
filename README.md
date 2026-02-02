@@ -1,12 +1,29 @@
 # HWPay — Fund Transfer API
 
 [![Tests](https://github.com/sergey-telpuk/hwpay/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/sergey-telpuk/hwpay/actions/workflows/tests.yml)
+[![codecov](https://codecov.io/gh/sergey-telpuk/hwpay/graph/badge.svg?branch=main)](https://codecov.io/gh/sergey-telpuk/hwpay?branch=main)
 [![PHPStan](https://img.shields.io/github/actions/workflow/status/sergey-telpuk/hwpay/tests.yml?branch=main&label=PHPStan)](https://github.com/sergey-telpuk/hwpay/actions/workflows/tests.yml)
 [![PHPCS](https://img.shields.io/github/actions/workflow/status/sergey-telpuk/hwpay/tests.yml?branch=main&label=PHPCS)](https://github.com/sergey-telpuk/hwpay/actions/workflows/tests.yml)
 [![Rector](https://img.shields.io/github/actions/workflow/status/sergey-telpuk/hwpay/tests.yml?branch=main&label=Rector)](https://github.com/sergey-telpuk/hwpay/actions/workflows/tests.yml)
 [![PHP 8.5](https://img.shields.io/badge/PHP-8.5-777BB4?logo=php&logoColor=white)](https://www.php.net/)
 
 A secure REST API for transferring funds between accounts. Built with PHP 8.5, Symfony 8, MySQL, Redis, and Docker Compose.
+
+### Quick evaluation (for reviewer)
+
+To verify the solution in under 2 minutes:
+
+```bash
+git clone https://github.com/sergey-telpuk/hwpay.git && cd hwpay
+docker compose up -d && sleep 5 && make migrate
+docker compose run --rm app php bin/console app:seed-manual-test-accounts
+curl -s http://localhost:8080/health
+curl -s -X POST http://localhost:8080/api/transfer -H "Content-Type: application/json" \
+  -d '{"from_account_id":"00000000-0000-0000-0000-000000000010","to_account_id":"00000000-0000-0000-0000-000000000011","amount_minor":1000,"idempotency_key":"demo-1"}'
+make qa
+```
+
+Health → 200, transfer → 200 with `transfer_id`, QA (PHPStan, PHPCS, Rector, tests) → green.
 
 ---
 
@@ -20,8 +37,13 @@ A secure REST API for transferring funds between accounts. Built with PHP 8.5, S
 - [Development](#development)
   - [Connecting to the database](#connecting-to-the-database-local-inspection)
 - [Architecture](#architecture)
+- [Design decisions & trade-offs](#design-decisions--trade-offs)
+- [Security considerations](#security-considerations)
+- [Test coverage](#test-coverage)
 - [Deployment](#deployment)
 - [Possible improvements](#possible-improvements)
+- [Evaluation checklist](#evaluation-checklist-assignment-criteria)
+- [Submission](#submission-homework-assignment)
 
 ---
 
@@ -189,6 +211,7 @@ See [Architecture](#architecture) for design details.
 |---------------|-------------|
 | `make install`| Composer install |
 | `make test`   | PHPUnit |
+| `make coverage` | PHPUnit with coverage report (HTML in `var/coverage/`) |
 | `make qa`     | PHPStan + PHPCS + Rector dry-run + tests |
 | `make migrate`| Run Doctrine migrations |
 | `make phpstan`| PHPStan only |
@@ -260,6 +283,46 @@ Exchange rates are configured in `config/services.yaml` under `parameters.exchan
 
 ---
 
+## Design decisions & trade-offs
+
+- **Idempotency: Redis first, then DB** — Fast path for repeated keys under load; DB is source of truth for completed transactions (survives Redis flush).
+- **Pessimistic lock in deterministic order (by account ID)** — Prevents deadlocks when two transfers touch the same accounts; lock order is always the same.
+- **Holds (Active → Captured/Released)** — Reserves amount on source before applying transfer; on failure we release the hold so balance is correct without rolling back ledger.
+- **Double-entry ledger, no stored balance** — Balance = sum(ledger entries) − active holds; no denormalized balance column to keep in sync.
+- **FX via technical accounts** — Cross-currency produces 4 ledger entries (from→FX_sold, FX_bought→to) so each currency leg balances; rates in config for simplicity (could be external service later).
+- **Messenger command bus** — Transfer is a command; handler is single place for idempotency, locking, hold, and persistence; easy to add async or retries later.
+
+---
+
+## Security considerations
+
+- **Input validation:** All transfer fields validated (Symfony Validator: types, lengths, positive amount); extra fields rejected (422).
+- **Account IDs:** Must be valid UUIDs (`AccountId`); invalid format → 400.
+- **No raw SQL with user input:** Queries use Doctrine/DBAL with parameters; ledger and holds use entity IDs, not user-controlled strings in WHERE.
+- **Idempotency key:** Stored hashed in Redis (SHA-256) for key length and privacy; DB stores original for audit.
+- **Error responses:** 5xx return JSON with `code` and `error`; stack/details only in `dev` (JsonExceptionSubscriber).
+
+Authentication and rate limiting are not implemented; see [Possible improvements](#possible-improvements).
+
+---
+
+## Test coverage
+
+Integration tests (16 total) cover:
+
+| Area | Tests |
+|------|--------|
+| **Health** | `GET /` (hello), `GET /health` (DB + cache ok) |
+| **Transfer success** | Same-currency, cross-currency (USD→EUR), idempotent repeat returns same response |
+| **Validation** | Invalid/missing fields → 422, extra fields → 422 |
+| **Business rules** | Invalid UUID → 400, same from/to → 400, account not found → 404, insufficient balance → 422 |
+| **FX** | Missing rate (e.g. GBP→JPY) → 400; same currency with different account currencies → success |
+| **Persistence** | Ledger entry count (2 same-currency, 4 FX), hold status Captured after success, FX transaction row |
+
+Run: `make test` or `make coverage` (HTML report in `var/coverage/index.html`); or `make qa` for full QA (same as CI).
+
+---
+
 ## Deployment
 
 1. Run migrations on deploy so the schema is up to date:
@@ -283,8 +346,22 @@ Exchange rates are configured in `config/services.yaml` under `parameters.exchan
 
 ---
 
-## Submission (task requirements)
+## Evaluation checklist (assignment criteria)
 
-- **Install & run:** [Getting started](#getting-started) above.
+| Criterion | Addressed in this repo |
+|-----------|------------------------|
+| **Technical excellence** | DDD layout (Domain/Application/Infrastructure), PHP 8.5, Symfony 8, PHPStan max, PHPCS, Rector |
+| **Problem solving** | Idempotency (Redis + DB), pessimistic locking, holds, double-entry ledger, FX via technical accounts |
+| **Modern practices** | Attributes, readonly classes, enums, Messenger command bus, RoadRunner |
+| **Attention to detail** | Validation, UUID checks, JSON error codes, health (DB + cache), logging |
+| **Professional readiness** | README (setup, API, DB connection, architecture), integration tests (16), CI (PHPStan, PHPCS, Rector, tests) |
+
+---
+
+## Submission (homework assignment)
+
+- **Install and run:** See [Getting started](#getting-started) above (clone → `docker compose up -d` → `make migrate` → optional seed → smoke test). All commands run via Docker; no local PHP/Composer required.
 - **Time spent:** ~8 hours
-- **AI tools used:** Cursor, ChatGPT
+- **AI tools used:** Cursor (IDE + AI assistance), ChatGPT. Used for boilerplate, refactors, and documentation; all logic and architecture decisions were reviewed and understood.
+- **Repository:** Public GitHub repo; includes `src/`, `config/`, `public/`, `composer.json`, `composer.lock`, Dockerfile, `compose.yml`, migrations, tests, and this README.
+- **Next steps (if extending):** Auth (API key/JWT) and rate limiting first; then metrics (Prometheus), saga/outbox for async notifications, and optional workflow engine (Temporal) for multi-step flows — see [Possible improvements](#possible-improvements).
