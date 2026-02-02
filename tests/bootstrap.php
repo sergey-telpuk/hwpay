@@ -16,6 +16,14 @@ if (file_exists(dirname(__DIR__).'/config/bootstrap.php')) {
     }
 }
 
+$argv = $_SERVER['argv'] ?? [];
+$testsuiteKey = array_search('--testsuite', $argv, true);
+$isUnitOnly = $testsuiteKey !== false && ($argv[$testsuiteKey + 1] ?? '') === 'Unit';
+
+if ($isUnitOnly) {
+    return;
+}
+
 $console = sprintf('%s/../bin/console', __DIR__);
 passthru(
     "APP_ENV=test php " . escapeshellarg($console) . " cache:clear --env=test --no-warmup",
